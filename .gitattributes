@@ -1,0 +1,2 @@
+# Windows-startbestanden moeten Windows-regeleindes houden
+*.bat -text

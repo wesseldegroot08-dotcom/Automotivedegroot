@@ -12,6 +12,28 @@ Een tool die auto-advertenties zoekt en uitrekent of je er winst op maakt.
 
 ---
 
+## Snelste manier op Windows (dubbelklikken)
+
+1. Installeer Python via [python.org/downloads](https://www.python.org/downloads/).
+   Zet een vinkje bij **"Add python.exe to PATH"**.
+2. Download deze map (groene knop **Code** → **Download ZIP**), klik met rechts op de ZIP → **Alles uitpakken**.
+3. Dubbelklik in de uitgepakte map op:
+
+| Bestand | Wat het doet | Wanneer |
+|---|---|---|
+| `installeren.bat` | Installeert alles wat de tool nodig heeft | Eén keer |
+| `demo.bat` | Dashboard met verzonnen auto's | Om te kijken hoe het werkt |
+| `test-marktplaats.bat` | Kijkt of Marktplaats werkt | Voordat je echt begint |
+| `start.bat` | Zoekt elke 30 minuten + opent het dashboard | Elke keer dat je hem gebruikt |
+
+Stoppen: sluit het zwarte venster.
+
+Komt er een blauw scherm **"Windows heeft uw pc beveiligd"**? Dat komt omdat het bestand van internet komt. Klik op **Meer informatie** → **Toch uitvoeren**.
+
+De rest van deze README legt hetzelfde uit met getypte opdrachten, voor als je meer wilt weten.
+
+---
+
 ## 1. Installeren (eenmalig)
 
 ### Stap 1: Python installeren
