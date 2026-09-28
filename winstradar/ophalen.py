@@ -38,7 +38,7 @@ class NetteOphaler:
         self.sessie = requests.Session()
         self.sessie.headers.update({"User-Agent": user_agent, "Accept-Language": "nl-NL,nl;q=0.9"})
         self._laatste = {}          # host -> tijd van laatste verzoek
-        self._robots = {}           # host -> (RobotFileParser of None, opgehaald_om)
+        self._robots = {}           # host -> (RobotFileParser, opgehaald_om)
         self._slot = threading.Lock()
 
     # ---------- wachten ----------
@@ -61,20 +61,19 @@ class NetteOphaler:
         robots_url = f"{deel.scheme}://{host}/robots.txt"
         self._wacht(host)
         parser = RobotFileParser()
+        # Lukt ophalen niet? Dan weten we niet of het mag. Dat is een verbindingsprobleem,
+        # geen verbod: we halen niets op en proberen het bij de volgende ronde opnieuw.
         try:
             antwoord = self.sessie.get(robots_url, timeout=20)
         except requests.RequestException as fout:
-            log.warning("Kon robots.txt van %s niet ophalen (%s). Voor de zekerheid: niets ophalen.", host, fout)
-            self._robots[host] = (None, time.time())
-            return None
+            raise ConnectionError(f"kon robots.txt van {host} niet ophalen, dus voor de zekerheid "
+                                  f"niets opgehaald ({fout.__class__.__name__})") from fout
         if antwoord.status_code in (401, 403):
             # Volgens de regels betekent dit: niets mag.
             parser.parse(["User-agent: *", "Disallow: /"])
         elif antwoord.status_code >= 500:
-            log.warning("robots.txt van %s geeft fout %s. Voor de zekerheid: niets ophalen.",
-                        host, antwoord.status_code)
-            self._robots[host] = (None, time.time())
-            return None
+            raise ConnectionError(f"robots.txt van {host} gaf fout {antwoord.status_code}, "
+                                  f"dus voor de zekerheid niets opgehaald")
         elif antwoord.status_code >= 400:
             parser.parse([])  # geen robots.txt = alles mag
         else:
@@ -83,8 +82,8 @@ class NetteOphaler:
         return parser
 
     def mag_ophalen(self, url):
-        parser = self._robots_voor(url)
-        return parser is not None and parser.can_fetch(self.user_agent, url)
+        """True/False volgens robots.txt. ConnectionError als robots.txt niet op te halen is."""
+        return self._robots_voor(url).can_fetch(self.user_agent, url)
 
     # ---------- ophalen ----------
     def haal(self, url, params=None, controleer_robots=True, json_verwacht=False):

@@ -83,7 +83,8 @@ def herken_motor(tekst, cilinderinhoud=None, brandstof=None):
         inhoud = f"{float(m.group(1)):.1f}"
         # Voor de weergave: "1.2 TSI" als er een motorwoord achter staat, anders "1.2"
         if m.group(2) and m.group(2) in MOTOR_WOORDEN:
-            geschreven = f"{m.group(1)} {m.group(2).upper()}"
+            # Schrijfwijze uit de advertentie overnemen ("laag" is even lang als "tekst")
+            geschreven = f"{m.group(1)} {tekst[m.start(2):m.end(2)]}"
         else:
             geschreven = m.group(1)
     elif cilinderinhoud:
