@@ -1,0 +1,101 @@
+{% extends "basis.html" %}
+{% block titel %}{{ a.merk }} {{ a.model }} · Winstradar{% endblock %}
+{% block kop %}<a class="knop licht" href="{{ url_for('overzicht') }}">← Terug naar overzicht</a>{% endblock %}
+
+{% block inhoud %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>{{ a.merk }} {{ a.model }} {{ a.motor or '' }} {{ a.uitvoering or '' }}</h2>
+    <span class="pill p-{{ r.status }}">{{ r.status_tekst }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="facts num">
+      <div><span class="label">Vraagprijs</span>{{ a.vraagprijs|euro }}</div>
+      <div><span class="label">Kenteken</span>{% if a.kenteken %}<span class="plate"><span class="eu">NL</span><span class="nr">{{ a.kenteken|kenteken }}</span></span>{% else %}<span class="muted">Niet zichtbaar in advertentie</span>{% endif %}</div>
+      <div><span class="label">Bouwjaar</span>{{ a.bouwjaar or 'onbekend' }}</div>
+      <div><span class="label">Kilometerstand</span>{{ a.kilometerstand|getal }}{% if a.kilometerstand is not none %} km{% endif %}</div>
+      <div><span class="label">Generatie</span>{{ a.generatie or 'onzeker' }}</div>
+      <div><span class="label">Motor (vergelijkt op)</span>{{ a.motor or '?' }} ({{ a.motor_sleutel or '?' }})</div>
+      <div><span class="label">Brandstof / transmissie</span>{{ a.brandstof or '?' }} · {{ a.transmissie or '?' }}</div>
+      <div><span class="label">Locatie</span>{{ a.locatie or '?' }}</div>
+      <div><span class="label">Gevonden</span>{{ a.site }} · {{ a.eerst_gevonden.replace('T', ' ')[:16] }}</div>
+      <div><span class="label">Laatst online gezien</span>{{ a.laatst_gezien.replace('T', ' ')[:16] }}</div>
+      {% if geschiedenis %}<div><span class="label">Prijswijzigingen</span>
+        {% for p in geschiedenis %}{{ p.datum[:10] }}: {{ p.oude_prijs|euro }} → {{ p.nieuwe_prijs|euro }}<br>{% endfor %}</div>{% endif %}
+    </div>
+    {% if a.link %}<div><a class="knop" href="{{ a.link }}" target="_blank" rel="noopener">Open advertentie</a></div>{% endif %}
+  </div>
+</section>
+
+<div class="two">
+  <section class="panel">
+    <div class="panel-head"><h2>Berekening</h2></div>
+    <div class="panel-body">
+    {% if r.status == 'te_weinig_data' %}
+      <div class="verdict v-te_weinig_data">Te weinig data: geen schatting.
+        <ul class="list" style="margin-top:6px">{% for x in r.redenen %}<li>{{ x }}</li>{% endfor %}</ul>
+      </div>
+    {% else %}
+      <div class="receipt num">
+        <div class="row"><span>Mediaan vraagprijs van {{ r.vergelijkbaar|length }} vergelijkbare auto's</span><span>{{ r.mediaan|euro(2) }}</span></div>
+        <div class="row sub"><span>− {{ inst.vergelijken.korting_vraagprijs_procent }}% (vraagprijs is niet de echte verkoopprijs)</span><span>−{{ r.korting|euro(2) }}</span></div>
+        <div class="row total"><span>Geschatte verkoopprijs</span><span>{{ r.verkoopprijs|euro(2) }}</span></div>
+        <div class="row sub"><span>− vraagprijs deze auto</span><span>−{{ a.vraagprijs|euro(2) }}</span></div>
+        <div class="row total big"><span>Marge</span><span class="{{ 'pos' if r.marge >= 0 else 'neg' }}">{{ r.marge|euro(2) }}</span></div>
+        {% for naam, bedrag in r.kosten.items() %}
+        <div class="row sub"><span>− {{ naam.replace('_', ' ') }}</span><span>−{{ bedrag|euro(2) }}</span></div>
+        {% endfor %}
+        <div class="row total big"><span>Winst</span><span class="{{ 'pos' if r.winst >= 0 else 'neg' }}">{{ r.winst|euro(2) }}</span></div>
+      </div>
+      <div class="verdict v-{{ r.status }}">
+        {% if r.status == 'melding' %}Deal: marge ≥ {{ inst.grenzen.min_marge|euro }} én winst ≥ {{ inst.grenzen.min_winst|euro }}
+        {% elif r.status == 'bijna' %}Geen melding: marge is goed, maar de winst is {{ (inst.grenzen.min_winst - r.winst)|euro(2) }} te laag
+        {% else %}Geen melding: te weinig marge{% endif %}
+      </div>
+    {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Controles</h2></div>
+    <div class="panel-body">
+      <div><h3>Rode vlaggen</h3>
+        {% if r.rode_vlaggen %}<ul class="list">{% for v in r.rode_vlaggen %}<li>{{ v }}</li>{% endfor %}</ul>
+        {% else %}<p class="muted" style="margin:0">Geen rode vlaggen gevonden.</p>{% endif %}
+      </div>
+      <div><h3>RDW-controle</h3>
+        {% if r.rdw %}
+          {% for ok, tekst in r.rdw %}<div class="checkline"><span class="{{ 'ok' if ok else 'nok' }}">{{ '✓' if ok else '!' }}</span><span>{{ tekst }}</span></div>{% endfor %}
+        {% elif a.kenteken %}<p class="muted" style="margin:0">Kenteken bekend, RDW-check volgt bij de volgende zoekronde.</p>
+        {% else %}<p class="muted" style="margin:0">Geen kenteken, dus geen RDW-controle. Vraag de verkoper om het kenteken.</p>{% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Gebruikte vergelijkbare auto's</h2>
+    <span class="muted">Zelfde merk, model, generatie, motor en transmissie · bouwjaar ±{{ inst.vergelijken.max_bouwjaar_verschil }} · km ±{{ inst.vergelijken.max_km_verschil|getal }}</span></div>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Advertentie</th><th class="r">Bouwjaar</th><th class="r">Km</th><th class="r">Vraagprijs</th><th>Laatst gezien</th></tr></thead>
+    <tbody>
+    {% for c in r.vergelijkbaar %}
+      <tr><td><a href="{{ c.link }}" target="_blank" rel="noopener">{{ c.titel }}</a></td><td class="r num">{{ c.bouwjaar }}</td>
+        <td class="r num">{{ c.kilometerstand|getal }}</td><td class="r num">{{ c.vraagprijs|euro }}</td><td class="muted num">{{ c.laatst_gezien[:10] }}</td></tr>
+    {% endfor %}
+    {% for c, reden in r.uitgesloten %}
+      <tr class="muted"><td>Niet meegeteld: {{ c.titel }} <small>({{ reden }})</small></td><td class="r num">{{ c.bouwjaar }}</td>
+        <td class="r num">{{ c.kilometerstand|getal }}</td><td class="r num">{{ c.vraagprijs|euro }}</td><td>{{ c.laatst_gezien[:10] }}</td></tr>
+    {% endfor %}
+    {% if not r.vergelijkbaar and not r.uitgesloten %}<tr><td colspan="5" class="muted">Geen vergelijkbare auto's.</td></tr>{% endif %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Beschrijving</h2>{% if not a.beschrijving_volledig %}<span class="muted">alleen het stukje uit de zoeklijst</span>{% endif %}</div>
+  <div class="panel-body"><div class="beschrijving">{{ a.beschrijving or 'Geen beschrijving.' }}</div></div>
+</section>
+{% endblock %}

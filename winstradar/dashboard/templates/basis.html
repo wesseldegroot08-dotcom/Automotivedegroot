@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titel %}Occasion Winstradar{% endblock %}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF1F6; --surface:#FFFFFF; --surface-2:#F6F8FB; --line:#D8DEE8;
+  --text:#141A2B; --muted:#5A6478; --accent:#1F3FA8; --accent-soft:#E4EAFB;
+  --plate:#F5C400; --plate-ink:#111111;
+  --good:#13794A; --good-bg:#E3F4EA; --warn:#8F5400; --warn-bg:#FFF1D6;
+  --bad:#B42318; --bad-bg:#FDE7E4; --neutral-bg:#E8ECF3;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#0F1420; --surface:#171E2D; --surface-2:#1D2536; --line:#2B3548;
+    --text:#E7ECF5; --muted:#9AA6BC; --accent:#8FA8FF; --accent-soft:#1E2A4D;
+    --good:#4CC38A; --good-bg:#12301F; --warn:#F0B45A; --warn-bg:#33260F;
+    --bad:#FF8A7A; --bad-bg:#3A1714; --neutral-bg:#232C3E;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;padding:0 16px}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 48px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0}
+h1{font-size:34px;line-height:1} h2{font-size:22px} h3{font-size:18px;margin-bottom:8px}
+a{color:var(--accent)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+header a{text-decoration:none;color:inherit}
+.status{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:14px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:6px}
+.dot.off{background:var(--bad)}
+.banner{border-radius:8px;padding:10px 14px;font-weight:500;border:1px solid var(--line)}
+.banner.fout{background:var(--bad-bg);color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:30px;line-height:1.1}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.panel-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.panel-body{padding:14px;display:flex;flex-direction:column;gap:18px}
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;min-width:130px;flex:1 1 130px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+select,input[type=number],input[type=text],input[type=url]{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+.check{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;padding-bottom:8px}
+button,.knop{font:inherit;font-weight:600;background:var(--accent);color:var(--surface);border:0;border-radius:6px;padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block}
+.knop.licht{background:var(--neutral-bg);color:var(--text)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:var(--surface-2)}
+.car a{font-weight:600;color:var(--text);text-decoration:none}
+.car a:hover{text-decoration:underline}
+.car small{display:block;color:var(--muted)}
+.pos{color:var(--good);font-weight:600} .neg{color:var(--bad);font-weight:600}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.p-melding{background:var(--good-bg);color:var(--good)}
+.p-bijna,.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}
+.p-geen_winst,.p-te_weinig_data{background:var(--neutral-bg);color:var(--muted)}
+.flags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.plate{display:inline-flex;border-radius:4px;overflow:hidden;border:1.5px solid var(--plate-ink);font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.06em;line-height:1}
+.plate .eu{background:#1F3FA8;color:#fff;font-size:10px;padding:4px;display:flex;align-items:flex-end}
+.plate .nr{background:var(--plate);color:var(--plate-ink);padding:4px 8px}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 16px;font-size:14px}
+.facts div{display:flex;flex-direction:column}
+.receipt{background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:12px 14px;font-size:14px;max-width:560px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+.row.sub{padding-left:14px;color:var(--muted);font-size:13px}
+.row.total{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:600}
+.row.big{font-family:var(--display);font-size:20px}
+.verdict{border-radius:6px;padding:10px 12px;font-weight:600;max-width:560px}
+.v-melding{background:var(--good-bg);color:var(--good)}
+.v-bijna{background:var(--warn-bg);color:var(--warn)}
+.v-geen_winst,.v-te_weinig_data{background:var(--neutral-bg);color:var(--muted)}
+.list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.checkline{display:flex;gap:8px;font-size:14px}
+.ok{color:var(--good);font-weight:700} .nok{color:var(--warn);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.beschrijving{white-space:pre-line;font-size:14px;max-height:320px;overflow:auto;background:var(--surface-2);padding:10px 12px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="{{ url_for('overzicht') }}"><div class="label">Auto-inkoop dashboard</div><h1>Occasion Winstradar</h1></a>
+    {% block kop %}{% endblock %}
+  </header>
+  {% block inhoud %}{% endblock %}
+</div>
+</body>
+</html>
