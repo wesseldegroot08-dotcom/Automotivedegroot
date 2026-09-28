@@ -1,0 +1,16 @@
+# Kopieer dit bestand naar "geheimen.toml" en vul je eigen gegevens in.
+# geheimen.toml wordt NIET naar GitHub geupload (staat in .gitignore).
+# Deel dit bestand met niemand.
+
+[telegram]
+# Maak een bot via @BotFather in Telegram. Die geeft je een token.
+bot_token = ""
+# Je chat-id. Zie de README hoe je die vindt.
+chat_id = ""
+
+[email]
+smtp_server = "smtp.gmail.com"
+poort = 587
+gebruiker = ""        # bijvoorbeeld jouwnaam@gmail.com
+wachtwoord = ""       # bij Gmail: een "app-wachtwoord", niet je gewone wachtwoord
+naar = ""             # het adres waar de melding naartoe gaat
