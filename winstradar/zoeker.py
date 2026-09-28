@@ -21,13 +21,20 @@ def _zoek_op_site(conn, site, inst):
     z = inst["zoeken"]
     eerste_keer = conn.execute("SELECT COUNT(*) FROM advertenties WHERE site=?", (site.naam,)).fetchone()[0] == 0
     max_paginas = z["max_paginas_eerste_keer"] if eerste_keer else z["max_paginas_daarna"]
-    teller = {"gezien": 0, "nieuw": 0, "prijs": 0}
+    v = inst["vergelijken"]
+    teller = {"gezien": 0, "nieuw": 0, "prijs": 0, "overgeslagen": 0}
 
     for m in z["modellen"]:
         merk, model = m["merk"], m["model"]
         try:
             for adv in site.zoek(merk, model, max_paginas,
                                  lambda ad_id: database.is_bekend(conn, site.naam, ad_id)):
+                # Niet elke zoekmethode kan op prijs filteren. Auto's zonder vaste prijs of
+                # buiten het vergelijkbereik (bv. EUR 15.000) slaan we niet op.
+                if adv.vraagprijs is None or not (
+                        v["min_prijs_vergelijkingsauto"] <= adv.vraagprijs <= v["max_prijs_vergelijkingsauto"]):
+                    teller["overgeslagen"] += 1
+                    continue
                 vul_aan(adv, merk, model)
                 pk, status = database.sla_op(conn, adv)
                 teller["gezien"] += 1
@@ -86,8 +93,9 @@ def zoekronde(conn, inst, geheimen, ophaler=None):
             continue
         try:
             t = _zoek_op_site(conn, site, inst)
-            log.info("%s: %d advertenties gezien, %d nieuw, %d prijswijzigingen",
-                     site.naam, t["gezien"], t["nieuw"], t["prijs"])
+            log.info("%s: %d advertenties opgeslagen, %d nieuw, %d prijswijzigingen, "
+                     "%d overgeslagen (buiten prijsbereik)",
+                     site.naam, t["gezien"], t["nieuw"], t["prijs"], t["overgeslagen"])
         except SiteGeblokkeerd as fout:
             tot = database.blokkeer_site(conn, site.naam, inst["verzoeken"]["blokkade_pauze_uren"], str(fout))
             log.error("%s BLOKKEERT ons: %s. Gestopt met deze site tot %s. Andere sites gaan door.",

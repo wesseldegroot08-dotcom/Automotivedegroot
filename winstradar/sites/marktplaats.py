@@ -145,8 +145,12 @@ class Marktplaats(Site):
                     data = functie(zoekterm, pagina)
                     methode = naam
                     break
-                except NietToegestaan as fout:
-                    log.info("Marktplaats: %s", fout)
+                except NietToegestaan:
+                    if naam == "api":
+                        log.info("Marktplaats: de snelle zoekmanier (API) mag niet volgens robots.txt. "
+                                 "Geen probleem: we gebruiken de gewone zoekpagina.")
+                    else:
+                        log.info("Marktplaats: de gewone zoekpagina mag ook niet volgens robots.txt.")
             if methode is None:
                 raise NietToegestaan("robots.txt van Marktplaats staat geen van beide zoekmethodes toe")
             if not data:

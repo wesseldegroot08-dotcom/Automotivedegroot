@@ -266,3 +266,23 @@ def test_blokkade_wordt_herkend(monkeypatch):
 def test_wachttijd_minimaal_5_seconden():
     from winstradar.ophalen import NetteOphaler
     assert NetteOphaler("x", wachttijd=1).wachttijd == 5
+
+
+def test_zoekronde_slaat_dure_autos_over(tmp_path, inst):
+    from winstradar import zoeker
+
+    class NepSite:
+        naam = "nep"
+        def zoek(self, merk, model, max_paginas, is_bekend):
+            for i, prijs in enumerate([3100, 15950, None]):
+                yield Advertentie(site="nep", advertentie_id=f"{merk}{model}{i}", link="",
+                                  titel=f"{merk} {model} 1.2 TSI", transmissie="Handgeschakeld",
+                                  bouwjaar=2014, kilometerstand=140000 + i, vraagprijs=prijs)
+        def haal_details(self, adv):
+            return adv
+
+    conn = database.verbind(tmp_path / "z.db")
+    teller = zoeker._zoek_op_site(conn, NepSite(), inst)
+    aantal_modellen = len(inst["zoeken"]["modellen"])
+    assert teller["gezien"] == aantal_modellen            # alleen de auto van EUR 3100
+    assert teller["overgeslagen"] == 2 * aantal_modellen  # EUR 15950 en geen prijs

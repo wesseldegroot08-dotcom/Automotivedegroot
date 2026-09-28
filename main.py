@@ -116,8 +116,14 @@ def cmd_test_marktplaats(inst):
         sys.exit(f"Marktplaats blokkeert: {fout}")
     except ConnectionError as fout:
         sys.exit(f"Verbindingsprobleem: {fout}")
-    print(f"{len(gevonden)} advertenties gevonden.")
-    for adv in gevonden[:5]:
+    v = inst["vergelijken"]
+    binnen = [a for a in gevonden if a.vraagprijs and
+              v["min_prijs_vergelijkingsauto"] <= a.vraagprijs <= v["max_prijs_vergelijkingsauto"]]
+    print(f"{len(gevonden)} advertenties gevonden, waarvan {len(binnen)} tussen "
+          f"{v['min_prijs_vergelijkingsauto']} en {v['max_prijs_vergelijkingsauto']} euro (die slaat de tool op).")
+    if gevonden:
+        print("HET WERKT! Voorbeelden:")
+    for adv in (binnen or gevonden)[:5]:
         vul_aan(adv, m["merk"], m["model"])
         print(f"  {adv.vraagprijs} euro | {adv.bouwjaar} | {adv.kilometerstand} km | "
               f"motor {adv.motor_sleutel} | {adv.transmissie} | {adv.titel[:50]}")
