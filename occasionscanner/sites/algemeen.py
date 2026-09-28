@@ -23,7 +23,7 @@ from ..advertentie import Advertentie
 from ..generaties import is_ander_model
 from ..logboek import log
 from ..normaliseren import bevat_woord, lees_getal
-from .basis import Site, auto_uit_ld_json, json_uit_html, meta_inhoud, zonder_html
+from .basis import Site, auto_uit_ld_json, jaar_uit_tekst, json_uit_html, meta_inhoud, zonder_html
 
 # Welke veldnamen betekenen wat? (kleine letters, stukje van de naam is genoeg)
 PRIJS = ["price", "prijs"]
@@ -31,7 +31,12 @@ PRIJS_NIET = ["month", "maand", "lease", "financ", "old", "previous", "vorige", 
               "label", "type", "rating", "evaluation", "indicator", "range", "from", "total"]
 KM = ["mileage", "kilometer", "odometer", "kmstand", "km"]
 JAAR = ["firstregistration", "registrationdate", "constructionyear", "bouwjaar", "modeldate",
-        "productiondate", "eerstetoelating", "year"]
+        "productiondate", "eerstetoelating", "year", "calendar"]
+
+# Veel sites tonen kenmerken als lijstje: [{"label": "Bouwjaar", "value": "03/2014"}, ...]
+LABEL_SLEUTELS = ["arialabel", "label", "iconname", "key"]
+WAARDE_SLEUTELS = ["data", "value", "text", "formatted"]
+MAAND_JAAR = re.compile(r"(?<!\d)(0?[1-9]|1[0-2])\s*[/-]\s*((?:19[89]|20[0-3])\d)(?!\d)")
 TITEL = ["title", "titel", "name", "heading"]
 MERK = ["make", "brand", "merk"]
 MODEL = ["model"]
@@ -46,16 +51,37 @@ CC = ["displacement", "cilinder", "cylinder"]
 
 
 def _plat(d, voorvoegsel="", diepte=0, uit=None):
-    """{'price': {'value': 3100}} -> {'price.value': 3100}. Lijsten slaan we over."""
+    """{'price': {'value': 3100}} -> {'price.value': 3100}.
+
+    Van lijsten nemen we alleen kenmerken-lijstjes over (zie _plat_kenmerken).
+    """
     uit = {} if uit is None else uit
     for sleutel, waarde in d.items():
         pad = f"{voorvoegsel}{str(sleutel).lower()}"
         if isinstance(waarde, dict):
             if diepte < 3:
                 _plat(waarde, pad + ".", diepte + 1, uit)
-        elif not isinstance(waarde, list) and waarde not in (None, ""):
+        elif isinstance(waarde, list):
+            _plat_kenmerken(waarde, pad, uit)
+        elif waarde not in (None, ""):
             uit.setdefault(pad, waarde)
     return uit
+
+
+def _plat_kenmerken(lijst, pad, uit):
+    """[{"ariaLabel": "Bouwjaar", "data": "03/2014"}] -> {"pad.bouwjaar": "03/2014"}."""
+    for item in lijst[:40]:
+        if not isinstance(item, dict):
+            continue
+        item = {str(k).lower(): v for k, v in item.items()}
+        inhoud = next((item[k] for k in WAARDE_SLEUTELS
+                       if k in item and isinstance(item[k], (str, int, float)) and item[k] != ""), None)
+        if inhoud is None:
+            continue
+        for k in LABEL_SLEUTELS:
+            label = item.get(k)
+            if isinstance(label, str) and label:
+                uit.setdefault(f"{pad}.{label.lower()}", inhoud)
 
 
 def _zoek(plat, woorden, niet=(), alleen_laatste=False, geldig=None):
@@ -112,6 +138,22 @@ def lees_jaar(waarde, _pad=""):
     return int(m.group(1)) if m else None
 
 
+def jaar_uit_plat(plat):
+    """Bouwjaar uit een veld; anders een datum als "03/2014" ergens in de advertentie."""
+    _, jaar = _zoek(plat, JAAR, geldig=lees_jaar)
+    if jaar is not None:
+        return lees_jaar(jaar)
+    for pad, waarde in plat.items():
+        # Plaatsingsdatum e.d. is geen bouwjaar
+        if any(w in pad for w in ("created", "publish", "updated", "online", "time", "since")):
+            continue
+        if isinstance(waarde, str):
+            m = MAAND_JAAR.search(waarde)
+            if m:
+                return int(m.group(2))
+    return None
+
+
 def lijkt_op_advertentie(d):
     """Geeft de platte gegevens terug als dit blokje op een auto-advertentie lijkt, anders None."""
     plat = _plat(d)
@@ -119,8 +161,7 @@ def lijkt_op_advertentie(d):
     if pad is None:
         return None
     km_pad, _ = _zoek(plat, KM, ["price", "bookmark"], geldig=lees_km)
-    jaar_pad, _ = _zoek(plat, JAAR, geldig=lees_jaar)
-    if km_pad is None and jaar_pad is None:
+    if km_pad is None and jaar_uit_plat(plat) is None:
         return None
     _, link = _zoek(plat, LINK, alleen_laatste=True)
     if not isinstance(link, str) or not (link.startswith("/") or link.startswith("http")):
@@ -162,7 +203,6 @@ def plat_naar_advertentie(plat, site, basis_url):
         titel = f"{merk} {titel}"
     _, ad_id = _zoek(plat, ID, alleen_laatste=True)
     _, km = _zoek(plat, KM, ["price", "bookmark"], geldig=lees_km)
-    _, jaar = _zoek(plat, JAAR, geldig=lees_jaar)
     _, brandstof = _zoek(plat, BRANDSTOF)
     _, transmissie = _zoek(plat, TRANSMISSIE)
     _, plaats = _zoek(plat, PLAATS)
@@ -177,12 +217,13 @@ def plat_naar_advertentie(plat, site, basis_url):
         beschrijving=zonder_html(beschrijving) if isinstance(beschrijving, str) else "",
         brandstof=str(brandstof) if brandstof else None,
         transmissie=str(transmissie) if transmissie else None,
-        bouwjaar=lees_jaar(jaar),
+        bouwjaar=jaar_uit_plat(plat) or jaar_uit_tekst(str(titel)),
         kilometerstand=lees_km(km),
         vraagprijs=lees_prijs(prijs, pad),
         locatie=str(plaats) if isinstance(plaats, str) else None,
         kenteken=str(kenteken) if isinstance(kenteken, str) else None,
-        extra={"cilinderinhoud": cc, "merk_site": merk if isinstance(merk, str) else None},
+        extra={"cilinderinhoud": cc, "merk_site": merk if isinstance(merk, str) else None,
+               "velden": plat},
     )
 
 

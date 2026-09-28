@@ -362,4 +362,64 @@ def test_algemene_site_zoekt_en_filtert(monkeypatch, inst):
 def test_alle_sites_staan_in_instellingen(inst):
     from occasionscanner.sites import actieve_sites
     namen = [s.naam for s in actieve_sites(None, inst)]
-    assert namen == ["marktplaats", "autoscout24", "gaspedaal", "autotrack", "autowereld"]
+    assert namen == ["marktplaats", "autoscout24", "autowereld"]   # gaspedaal en autotrack: robots.txt zegt nee
+
+
+# ---------- robots.txt met sterretjes en dollartekens ----------
+
+def test_robots_sterretje_en_dollar():
+    from occasionscanner.robots import Robots
+    r = Robots("""
+User-agent: Googlebot
+Allow: /
+
+User-agent: *
+Disallow: /*?sort=
+Disallow: /lrp/api/
+Disallow: /*.pdf$
+Allow: /lrp/api/openbaar
+""")
+    ua = "OccasionScanner/1.0 (test)"
+    assert r.mag(ua, "https://x.nl/l/auto-s/q/polo/")
+    assert not r.mag(ua, "https://x.nl/l/auto-s/q/polo/?sort=prijs")      # Python's eigen lezer mist deze
+    assert not r.mag(ua, "https://x.nl/lrp/api/search?query=polo")
+    assert r.mag(ua, "https://x.nl/lrp/api/openbaar/x")                    # langste regel wint
+    assert not r.mag(ua, "https://x.nl/brochure.pdf")
+    assert r.mag(ua, "https://x.nl/brochure.pdf?versie=2")                 # $ = hier houdt het op
+    assert r.mag(ua, "https://x.nl/robots.txt")
+
+
+def test_robots_eigen_groep_en_alles_verboden():
+    from occasionscanner.robots import Robots
+    assert not Robots("User-agent: *\nDisallow: /").mag("OccasionScanner/1.0", "https://x.nl/a")
+    assert Robots("").mag("OccasionScanner/1.0", "https://x.nl/a")
+    r = Robots("User-agent: *\nDisallow: /\n\nUser-agent: occasionscanner\nDisallow: /geheim")
+    assert r.mag("OccasionScanner/1.0", "https://x.nl/a")                  # eigen groep gaat voor
+    assert not r.mag("OccasionScanner/1.0", "https://x.nl/geheim/1")
+    assert not r.mag("AndereBot/2.0", "https://x.nl/a")
+
+
+# ---------- bouwjaar uit een kenmerkenlijstje ----------
+
+def test_algemeen_bouwjaar_uit_kenmerkenlijst():
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
+    data = {"props": {"pageProps": {"listings": [{
+        "id": "x1", "url": "/aanbod/polo-x1", "publishedAt": "05/2026",
+        "vehicle": {"make": "Volkswagen", "model": "Polo", "modelVersionInput": "1.2 TSI Comfortline"},
+        "price": {"priceFormatted": "€ 6.999,-"},
+        "vehicleDetails": [
+            {"data": "135.654 km", "iconName": "mileage_road", "ariaLabel": "Kilometerstand"},
+            {"data": "Handgeschakeld", "iconName": "gearbox", "ariaLabel": "Transmissie"},
+            {"data": "03/2014", "iconName": "calendar", "ariaLabel": "Bouwjaar"},
+            {"data": "Benzine", "iconName": "gas_pump", "ariaLabel": "Brandstof"}]}]}}}
+    ads = advertenties_uit_pagina(_pagina(data), "autoscout24", "https://www.autoscout24.nl/lst")
+    assert len(ads) == 1
+    a = vul_aan(ads[0], "Volkswagen", "Polo")
+    assert (a.vraagprijs, a.bouwjaar, a.kilometerstand) == (6999, 2014, 135654)
+    assert (a.transmissie, a.brandstof) == ("handgeschakeld", "benzine")
+
+
+def test_algemeen_plaatsingsdatum_is_geen_bouwjaar():
+    from occasionscanner.sites.algemeen import jaar_uit_plat
+    assert jaar_uit_plat({"publishedat": "05/2026", "titel": "Polo"}) is None
+    assert jaar_uit_plat({"details.eerste toelating": "7-2013"}) == 2013

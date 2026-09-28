@@ -101,12 +101,14 @@ kanaal = "geen"
 
 [sites]
 # Zet een site op false om hem uit te zetten.
-# Marktplaats is getest en werkt. De andere sites zijn nog NIET getest:
-# dubbelklik op verken-sites.bat om te zien welke werken.
+# Getest met verken-sites.bat (28-09-2026):
+#   marktplaats en autoscout24 werken.
+#   gaspedaal en autotrack: robots.txt staat automatisch zoeken NIET toe. Daarom uit.
+#   autowereld: nog geen advertenties herkend. Staat aan zodat verken-sites hem test.
 marktplaats = true
 autoscout24 = true
-gaspedaal = true
-autotrack = true
+gaspedaal = false
+autotrack = false
 autowereld = true
 
 

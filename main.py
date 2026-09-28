@@ -132,6 +132,26 @@ def cmd_test_marktplaats(inst):
         print("Geen advertenties. Waarschijnlijk is de website veranderd. Laat het mij weten.")
 
 
+def _toon_velden(adv):
+    """Laat zien welke gegevens de site meestuurt, zodat de herkenning verbeterd kan worden."""
+    velden = adv.extra.get("velden") or {}
+    print("  Gegevens van de eerste advertentie (maak hier ook een foto van):")
+    for pad, waarde in list(velden.items())[:45]:
+        print(f"    {pad[:45]:<45} = {str(waarde)[:50]}")
+
+
+def _toon_pagina_info(html):
+    import re
+    from occasionscanner.sites.basis import json_uit_html
+    titel = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+    blokken = json_uit_html(html)
+    print(f"  Paginatitel: {titel.group(1).strip()[:80] if titel else '(geen)'}")
+    print(f"  Grootte: {len(html) // 1000} kB, {len(blokken)} JSON-blokken gevonden")
+    for blok in blokken[:5]:
+        sleutels = list(blok)[:8] if isinstance(blok, dict) else [f"lijst met {len(blok)} items"]
+        print(f"    blok met: {', '.join(map(str, sleutels))}")
+
+
 def cmd_verken_sites(inst):
     from occasionscanner.instellingen import LOG_MAP
     from occasionscanner.sites import alle_sitenamen, maak_site
@@ -186,10 +206,18 @@ def cmd_verken_sites(inst):
             vul_aan(adv, m["merk"], m["model"])
             print(f"    {adv.vraagprijs} euro | {adv.bouwjaar} | {adv.kilometerstand} km | "
                   f"{adv.transmissie} | {adv.titel[:45]}")
-        if gevonden:
+        zonder_jaar = sum(a.bouwjaar is None for a in gevonden)
+        zonder_km = sum(a.kilometerstand is None for a in gevonden)
+        if gevonden and (zonder_jaar or zonder_km):
+            print(f"  LET OP: {zonder_jaar} zonder bouwjaar, {zonder_km} zonder km-stand.")
+            _toon_velden(gevonden[0])
+            uitslag[naam] = f"DEELS ({zonder_jaar} zonder bouwjaar, {zonder_km} zonder km)"
+        elif gevonden:
             uitslag[naam] = f"WERKT ({len(gevonden)} gevonden)"
         else:
             print(f"  Geen advertenties herkend. De pagina is bewaard in logs/verkenning/{naam}.html")
+            if naam != "marktplaats":
+                _toon_pagina_info(html)
             uitslag[naam] = "GEEN ADVERTENTIES HERKEND"
         print()
 

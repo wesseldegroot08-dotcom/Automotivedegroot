@@ -2,7 +2,7 @@
 
 Een tool die auto-advertenties zoekt en uitrekent of je er winst op maakt.
 
-- Zoekt elke 30 minuten op Marktplaats, AutoScout24, Gaspedaal, AutoTrack en Autowereld.
+- Zoekt elke 30 minuten op Marktplaats en AutoScout24 (Autowereld in test).
 - Slaat alles op in een database op je laptop.
 - Rekent per auto de **marge** en de **winst** uit, en laat de hele berekening zien.
 - Controleert het kenteken bij de RDW (APK, datum eerste toelating, tellerstand).
@@ -213,7 +213,7 @@ Mediaan van 7 vergelijkbare Polo's      € 4.750,00
 ## 10. Hoe de tool websites netjes behandelt
 
 - Maximaal **1 verzoek per 5 seconden** per site.
-- Controleert **robots.txt** voor elke link. Mag het niet? Dan haalt hij niets op.
+- Controleert **robots.txt** voor elke link. Mag het niet? Dan haalt hij niets op. De controle begrijpt ook regels met `*` en `$` (de standaard Python-controle doet dat niet).
 - Geen inlog, geen captcha omzeilen, geen trucs. De tool zegt eerlijk wie hij is.
 - Blokkeert een site? Dan stopt de tool 6 uur met die site, schrijft het in `logs/occasionscanner.log` en gaat door met de rest.
 
@@ -237,12 +237,16 @@ Mediaan van 7 vergelijkbare Polo's      € 4.750,00
 
 | Site | Status |
 |---|---|
-| Marktplaats | Getest en werkt (via de gewone zoekpagina; de API mag niet volgens robots.txt) |
-| AutoScout24, Gaspedaal, AutoTrack, Autowereld | Gebouwd, maar **nog niet getest** tegen de echte site |
+| Marktplaats | Werkt (via de gewone zoekpagina; de API mag niet volgens robots.txt) |
+| AutoScout24 | Werkt; bouwjaar-herkenning verbeterd (eerste test gaf geen bouwjaar) |
+| Gaspedaal | **Mag niet** volgens robots.txt, staat uit |
+| AutoTrack | **Mag niet** volgens robots.txt, staat uit |
+| Autowereld | Nog geen advertenties herkend, wordt onderzocht |
 
 Draai `verken-sites.bat`. Per site zie je:
 
 - **WERKT** → prima, laat hem aan staan.
+- **DEELS** → advertenties gevonden, maar zonder bouwjaar of km-stand. Daarmee kan de tool niet rekenen. Stuur een foto van de "Gegevens van de eerste advertentie".
 - **MAG NIET (robots.txt)** → de site verbiedt automatisch zoeken. Zet hem uit in `instellingen.toml` onder `[sites]` (bijvoorbeeld `gaspedaal = false`). De tool haalt er toch al niets op.
 - **ZOEK-URL KLOPT NIET** → zoek zelf op die site naar een Volkswagen Polo, kopieer de link uit je browser en zet hem in `instellingen.toml` onder `[zoek_urls]`. Vervang `volkswagen` door `{merk}`, `polo` door `{model}` en het paginanummer door `{pagina}`.
 - **GEEN ADVERTENTIES HERKEND** → de site is anders opgebouwd dan verwacht. De pagina staat in `logs/verkenning/`. Stuur die op, dan kan de herkenning aangepast worden.
