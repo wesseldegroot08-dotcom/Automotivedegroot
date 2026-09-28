@@ -23,8 +23,10 @@ def getal(x):
     return "onbekend" if x is None else f"{x:,}".replace(",", ".")
 
 
-def maak_app(inst, db_pad=None):
+def maak_app(inst, db_pad=None, demo=False):
     app = Flask(__name__)
+    # In de demo staat bovenaan elke pagina een balk dat het om verzonnen auto's gaat.
+    app.jinja_env.globals["demo"] = demo
     app.jinja_env.filters.update(euro=euro, getal=getal, kenteken=toon_kenteken)
     ophaler = maak_ophaler(inst)
 

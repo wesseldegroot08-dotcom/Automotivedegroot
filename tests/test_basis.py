@@ -193,12 +193,16 @@ def test_dashboard_met_demo(tmp_path, inst):
     from winstradar.demo import vul_demo
     pad = tmp_path / "demo.db"
     vul_demo(pad)
-    client = maak_app(inst, pad).test_client()
+    client = maak_app(inst, pad, demo=True).test_client()
     pagina = client.get("/").get_data(as_text=True)
     assert "Polo" in pagina and "Melding" in pagina
+    assert "verzonnen auto's" in pagina                  # demo-balk zichtbaar
     assert client.get("/?alleen_deals=1").status_code == 200
     detail = client.get("/auto/1").get_data(as_text=True)
     assert "Mediaan vraagprijs" in detail
+    assert 'href=""' not in detail                      # geen lege links in de demo
+    echt = maak_app(inst, pad).test_client().get("/").get_data(as_text=True)
+    assert "verzonnen auto's" not in echt               # geen demo-balk in de echte versie
 
 
 # ---------- netjes ophalen (met een nep-website, zonder internet) ----------

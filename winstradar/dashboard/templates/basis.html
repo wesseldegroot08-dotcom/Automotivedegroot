@@ -40,6 +40,7 @@ header a{text-decoration:none;color:inherit}
 .dot.off{background:var(--bad)}
 .banner{border-radius:8px;padding:10px 14px;font-weight:500;border:1px solid var(--line)}
 .banner.fout{background:var(--bad-bg);color:var(--bad)}
+.banner.demo{background:var(--warn-bg);color:var(--warn)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
 .stat b{font-family:var(--display);font-size:30px;line-height:1.1}
@@ -99,6 +100,8 @@ tbody tr:hover{background:var(--surface-2)}
     <a href="{{ url_for('overzicht') }}"><div class="label">Auto-inkoop dashboard</div><h1>Occasion Winstradar</h1></a>
     {% block kop %}{% endblock %}
   </header>
+  {% if demo %}<div class="banner demo"><b>DEMO</b> · Dit zijn verzonnen auto's om te laten zien hoe het werkt. De links doen daarom niets.
+    Voor echte advertenties: sluit dit venster en dubbelklik op <b>start.bat</b>.</div>{% endif %}
   {% block inhoud %}{% endblock %}
 </div>
 </body>

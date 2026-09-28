@@ -28,7 +28,7 @@ from winstradar.ophalen import NietToegestaan, SiteGeblokkeerd
 from winstradar.zoeker import blijf_zoeken, maak_ophaler, zoekronde
 
 
-def start_dashboard(inst, db_pad=None, open_browser=True):
+def start_dashboard(inst, db_pad=None, open_browser=True, demo=False):
     from winstradar.dashboard.app import maak_app
     poort = inst["dashboard"]["poort"]
     adres = f"http://127.0.0.1:{poort}"
@@ -36,7 +36,7 @@ def start_dashboard(inst, db_pad=None, open_browser=True):
     if open_browser:
         threading.Timer(1.5, lambda: webbrowser.open(adres)).start()
     # 127.0.0.1 = alleen jouw eigen laptop kan erbij, niet anderen op je wifi
-    maak_app(inst, db_pad).run(host="127.0.0.1", port=poort, debug=False, use_reloader=False)
+    maak_app(inst, db_pad, demo).run(host="127.0.0.1", port=poort, debug=False, use_reloader=False)
 
 
 def cmd_start(inst, geheimen):
@@ -157,7 +157,7 @@ def main():
             from winstradar.demo import vul_demo
             DATA_MAP.mkdir(exist_ok=True)
             vul_demo(DATA_MAP / "demo.db")
-            start_dashboard(inst, DATA_MAP / "demo.db")
+            start_dashboard(inst, DATA_MAP / "demo.db", demo=True)
     except KeyboardInterrupt:
         print("\nGestopt.")
 

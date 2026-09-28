@@ -81,7 +81,7 @@
     <thead><tr><th>Advertentie</th><th class="r">Bouwjaar</th><th class="r">Km</th><th class="r">Vraagprijs</th><th>Laatst gezien</th></tr></thead>
     <tbody>
     {% for c in r.vergelijkbaar %}
-      <tr><td><a href="{{ c.link }}" target="_blank" rel="noopener">{{ c.titel }}</a></td><td class="r num">{{ c.bouwjaar }}</td>
+      <tr><td>{% if c.link %}<a href="{{ c.link }}" target="_blank" rel="noopener">{{ c.titel }}</a>{% else %}{{ c.titel }}{% endif %}</td><td class="r num">{{ c.bouwjaar }}</td>
         <td class="r num">{{ c.kilometerstand|getal }}</td><td class="r num">{{ c.vraagprijs|euro }}</td><td class="muted num">{{ c.laatst_gezien[:10] }}</td></tr>
     {% endfor %}
     {% for c, reden in r.uitgesloten %}
