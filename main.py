@@ -1,0 +1,270 @@
+"""Occasion Scanner - startbestand.
+
+Gebruik (typ in de terminal, in deze map):
+    python main.py start             zoek elke 30 minuten + open het dashboard
+    python main.py zoek              doe één zoekronde en stop
+    python main.py dashboard         alleen het dashboard openen
+    python main.py link <url>        één advertentie doorrekenen (back-up)
+    python main.py handmatig         zelf de gegevens van een auto invoeren
+    python main.py test-melding      stuur een testbericht (Telegram/e-mail)
+    python main.py test-marktplaats  kijk of Marktplaats nog werkt (haalt 1 pagina op)
+    python main.py verken-sites      kijk per site of het werkt (robots.txt + 1 zoekpagina)
+    python main.py demo              bekijk het dashboard met verzonnen auto's
+"""
+
+import argparse
+import sys
+import threading
+import webbrowser
+
+if sys.version_info < (3, 11):
+    sys.exit("Deze tool heeft Python 3.11 of nieuwer nodig. Zie de README.")
+
+from occasionscanner import analyse, database, meldingen
+from occasionscanner.advertentie import Advertentie
+from occasionscanner.instellingen import DATA_MAP, laad_geheimen, laad_instellingen
+from occasionscanner.logboek import maak_logboek
+from occasionscanner.normaliseren import lees_getal, vul_aan
+from occasionscanner.ophalen import NietToegestaan, SiteGeblokkeerd
+from occasionscanner.zoeker import blijf_zoeken, maak_ophaler, zoekronde
+
+
+def start_dashboard(inst, db_pad=None, open_browser=True, demo=False):
+    from occasionscanner.dashboard.app import maak_app
+    poort = inst["dashboard"]["poort"]
+    adres = f"http://127.0.0.1:{poort}"
+    print(f"\nDashboard: {adres}  (open deze link in je browser)\n")
+    if open_browser:
+        threading.Timer(1.5, lambda: webbrowser.open(adres)).start()
+    # 127.0.0.1 = alleen jouw eigen laptop kan erbij, niet anderen op je wifi
+    maak_app(inst, db_pad, demo).run(host="127.0.0.1", port=poort, debug=False, use_reloader=False)
+
+
+def cmd_start(inst, geheimen):
+    conn = database.verbind()
+    threading.Thread(target=blijf_zoeken, args=(conn, inst, geheimen), daemon=True).start()
+    start_dashboard(inst)
+
+
+def cmd_link(inst, url):
+    from occasionscanner.dashboard.app import reken_link_door
+    conn = database.verbind()
+    try:
+        pk = reken_link_door(conn, maak_ophaler(inst), inst, url)
+    except (ValueError, NietToegestaan, SiteGeblokkeerd, ConnectionError) as fout:
+        sys.exit(f"Niet gelukt: {fout}")
+    print()
+    print(analyse.als_tekst(analyse.analyseer(conn, database.haal_auto(conn, pk), inst)))
+
+
+def vraag(tekst, verplicht=True):
+    while True:
+        antwoord = input(f"{tekst}: ").strip()
+        if antwoord or not verplicht:
+            return antwoord or None
+        print("  Dit is verplicht.")
+
+
+def cmd_handmatig(inst):
+    print("Vul de gegevens van de auto in. (Enter = leeg laten, als het niet verplicht is)\n")
+    merk = vraag("Merk (bv. Volkswagen)")
+    model = vraag("Model (bv. Polo)")
+    motor = vraag("Motor (bv. 1.2 TSI)")
+    transmissie = vraag("Transmissie (handgeschakeld/automaat)")
+    brandstof = vraag("Brandstof (benzine/hybride)")
+    bouwjaar = lees_getal(vraag("Bouwjaar"))
+    km = lees_getal(vraag("Kilometerstand"))
+    prijs = lees_getal(vraag("Vraagprijs"))
+    kenteken = vraag("Kenteken (mag leeg)", verplicht=False)
+    link = vraag("Link (mag leeg)", verplicht=False)
+    tekst = vraag("Beschrijving (mag leeg)", verplicht=False) or ""
+
+    adv = Advertentie(site="handmatig", advertentie_id=f"{merk}-{model}-{bouwjaar}-{km}-{prijs}", link=link or "",
+                      titel=f"{merk} {model} {motor}", beschrijving=tekst, beschrijving_volledig=bool(tekst),
+                      transmissie=transmissie, brandstof=brandstof, bouwjaar=bouwjaar,
+                      kilometerstand=km, vraagprijs=prijs, kenteken=kenteken)
+    vul_aan(adv, merk, model)
+    conn = database.verbind()
+    pk, _ = database.sla_op(conn, adv)
+    if adv.kenteken and inst["rdw"]["aan"]:
+        from occasionscanner import rdw
+        try:
+            database.sla_rdw_op(conn, pk, rdw.haal_op(maak_ophaler(inst), adv.kenteken))
+        except (ConnectionError, SiteGeblokkeerd) as fout:
+            print(f"RDW-controle niet gelukt: {fout}")
+    print()
+    print(analyse.als_tekst(analyse.analyseer(conn, database.haal_auto(conn, pk), inst)))
+
+
+def cmd_test_melding(inst, geheimen):
+    if inst["meldingen"]["kanaal"] == "geen":
+        sys.exit("Kanaal staat op 'geen'. Zet kanaal op 'telegram' of 'email' in instellingen.toml.")
+    gelukt = meldingen.verstuur("Testbericht van Occasion Scanner. Meldingen werken!",
+                                "Test Occasion Scanner", inst, geheimen)
+    print("Gelukt! Kijk op je telefoon of in je mail." if gelukt else "Niet gelukt. Kijk in logs/occasionscanner.log.")
+
+
+def cmd_test_marktplaats(inst):
+    from occasionscanner.sites.marktplaats import Marktplaats
+    site = Marktplaats(maak_ophaler(inst), inst)
+    m = inst["zoeken"]["modellen"][0]
+    print(f"Test: één pagina zoeken naar {m['merk']} {m['model']} (duurt ongeveer 10 seconden)...")
+    try:
+        gevonden = list(site.zoek(m["merk"], m["model"], 1, lambda _id: False))
+    except NietToegestaan as fout:
+        sys.exit(f"robots.txt staat het niet toe: {fout}\nDeze module mag dus niet gebruikt worden.")
+    except SiteGeblokkeerd as fout:
+        sys.exit(f"Marktplaats blokkeert: {fout}")
+    except ConnectionError as fout:
+        sys.exit(f"Verbindingsprobleem: {fout}")
+    v = inst["vergelijken"]
+    binnen = [a for a in gevonden if a.vraagprijs and
+              v["min_prijs_vergelijkingsauto"] <= a.vraagprijs <= v["max_prijs_vergelijkingsauto"]]
+    print(f"{len(gevonden)} advertenties gevonden, waarvan {len(binnen)} tussen "
+          f"{v['min_prijs_vergelijkingsauto']} en {v['max_prijs_vergelijkingsauto']} euro (die slaat de tool op).")
+    if gevonden:
+        print("HET WERKT! Voorbeelden:")
+    for adv in (binnen or gevonden)[:5]:
+        vul_aan(adv, m["merk"], m["model"])
+        print(f"  {adv.vraagprijs} euro | {adv.bouwjaar} | {adv.kilometerstand} km | "
+              f"motor {adv.motor_sleutel} | {adv.transmissie} | {adv.titel[:50]}")
+    if not gevonden:
+        print("Geen advertenties. Waarschijnlijk is de website veranderd. Laat het mij weten.")
+
+
+def _toon_velden(adv):
+    """Laat zien welke gegevens de site meestuurt, zodat de herkenning verbeterd kan worden."""
+    velden = adv.extra.get("velden") or {}
+    print("  Gegevens van de eerste advertentie (maak hier ook een foto van):")
+    for pad, waarde in list(velden.items())[:45]:
+        print(f"    {pad[:45]:<45} = {str(waarde)[:50]}")
+
+
+def _toon_pagina_info(html):
+    import re
+    from occasionscanner.sites.basis import json_uit_html
+    titel = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+    blokken = json_uit_html(html)
+    print(f"  Paginatitel: {titel.group(1).strip()[:80] if titel else '(geen)'}")
+    print(f"  Grootte: {len(html) // 1000} kB, {len(blokken)} JSON-blokken gevonden")
+    for blok in blokken[:5]:
+        sleutels = list(blok)[:8] if isinstance(blok, dict) else [f"lijst met {len(blok)} items"]
+        print(f"    blok met: {', '.join(map(str, sleutels))}")
+
+
+def cmd_verken_sites(inst):
+    from occasionscanner.instellingen import LOG_MAP
+    from occasionscanner.sites import alle_sitenamen, maak_site
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
+
+    ophaler = maak_ophaler(inst)
+    m = inst["zoeken"]["modellen"][0]
+    map_ = LOG_MAP / "verkenning"
+    map_.mkdir(parents=True, exist_ok=True)
+    uitslag = {}
+    print(f"Per site: robots.txt controleren en 1 zoekpagina ophalen voor {m['merk']} {m['model']}.")
+    print("Dit duurt ongeveer een halve minuut per site.\n")
+
+    for naam in alle_sitenamen(inst):
+        site = maak_site(naam, ophaler, inst)
+        print(f"=== {naam} ===")
+        try:
+            if naam == "marktplaats":
+                gevonden = list(site.zoek(m["merk"], m["model"], 1, lambda _id: False))
+                herkend = gevonden
+            else:
+                url = site.maak_zoek_url(m["merk"], m["model"], 0)
+                print(f"  Zoek-URL: {url}")
+                if not ophaler.mag_ophalen(url):
+                    print("  robots.txt staat deze zoekpagina NIET toe. De tool slaat deze site over.")
+                    print(f"  Zet in instellingen.toml onder [sites]: {naam} = false")
+                    uitslag[naam] = "MAG NIET (robots.txt)"
+                    continue
+                html = ophaler.haal(url)
+                if not html:
+                    print("  Deze zoekpagina bestaat niet (fout 404). De zoek-URL moet aangepast worden.")
+                    uitslag[naam] = "ZOEK-URL KLOPT NIET"
+                    continue
+                (map_ / f"{naam}.html").write_text(html, encoding="utf-8")
+                herkend = advertenties_uit_pagina(html, naam, url)
+                gevonden = [a for a in herkend if site.hoort_bij_model(a, m["merk"], m["model"])]
+        except NietToegestaan as fout:
+            print(f"  robots.txt staat het niet toe: {fout}")
+            uitslag[naam] = "MAG NIET (robots.txt)"
+            continue
+        except SiteGeblokkeerd as fout:
+            print(f"  De site blokkeert: {fout}")
+            uitslag[naam] = "GEBLOKKEERD"
+            continue
+        except ConnectionError as fout:
+            print(f"  Verbindingsprobleem: {fout}")
+            uitslag[naam] = "GEEN VERBINDING"
+            continue
+
+        print(f"  {len(herkend)} advertenties herkend, waarvan {len(gevonden)} echt een {m['merk']} {m['model']}.")
+        for adv in gevonden[:3]:
+            vul_aan(adv, m["merk"], m["model"])
+            print(f"    {adv.vraagprijs} euro | {adv.bouwjaar} | {adv.kilometerstand} km | "
+                  f"{adv.transmissie} | {adv.titel[:45]}")
+        zonder_jaar = sum(a.bouwjaar is None for a in gevonden)
+        zonder_km = sum(a.kilometerstand is None for a in gevonden)
+        if gevonden and (zonder_jaar or zonder_km):
+            print(f"  LET OP: {zonder_jaar} zonder bouwjaar, {zonder_km} zonder km-stand.")
+            _toon_velden(gevonden[0])
+            uitslag[naam] = f"DEELS ({zonder_jaar} zonder bouwjaar, {zonder_km} zonder km)"
+        elif gevonden:
+            uitslag[naam] = f"WERKT ({len(gevonden)} gevonden)"
+        else:
+            print(f"  Geen advertenties herkend. De pagina is bewaard in logs/verkenning/{naam}.html")
+            if naam != "marktplaats":
+                _toon_pagina_info(html)
+            uitslag[naam] = "GEEN ADVERTENTIES HERKEND"
+        print()
+
+    print("\n=========== SAMENVATTING ===========")
+    for naam, tekst in uitslag.items():
+        print(f"  {naam:<14} {tekst}")
+    print("\nMaak een foto van dit scherm en stuur hem op.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Occasion Scanner")
+    parser.add_argument("opdracht", choices=["start", "zoek", "dashboard", "link", "handmatig",
+                                             "test-melding", "test-marktplaats", "verken-sites", "demo"])
+    parser.add_argument("url", nargs="?", help="alleen bij 'link'")
+    args = parser.parse_args()
+
+    maak_logboek()
+    inst = laad_instellingen()
+    geheimen = laad_geheimen()
+
+    try:
+        if args.opdracht == "start":
+            cmd_start(inst, geheimen)
+        elif args.opdracht == "zoek":
+            zoekronde(database.verbind(), inst, geheimen)
+        elif args.opdracht == "dashboard":
+            start_dashboard(inst)
+        elif args.opdracht == "link":
+            if not args.url:
+                sys.exit("Geef een link mee, bv: python main.py link https://www.marktplaats.nl/v/...")
+            cmd_link(inst, args.url)
+        elif args.opdracht == "handmatig":
+            cmd_handmatig(inst)
+        elif args.opdracht == "test-melding":
+            cmd_test_melding(inst, geheimen)
+        elif args.opdracht == "test-marktplaats":
+            cmd_test_marktplaats(inst)
+        elif args.opdracht == "verken-sites":
+            cmd_verken_sites(inst)
+        elif args.opdracht == "demo":
+            from occasionscanner.demo import vul_demo
+            DATA_MAP.mkdir(exist_ok=True)
+            vul_demo(DATA_MAP / "demo.db")
+            start_dashboard(inst, DATA_MAP / "demo.db", demo=True)
+    except KeyboardInterrupt:
+        print("\nGestopt.")
+
+
+if __name__ == "__main__":
+    main()

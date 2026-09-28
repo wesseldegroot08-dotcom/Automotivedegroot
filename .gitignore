@@ -1,0 +1,11 @@
+# Eigen gegevens: nooit uploaden
+geheimen.toml
+data/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/

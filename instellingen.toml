@@ -1,0 +1,141 @@
+# ============================================================
+#  Instellingen van Occasion Scanner
+#  Pas hier je zoekcriteria, grenzen en kosten aan.
+#  Regels die met # beginnen zijn uitleg en doen niets.
+#  Na een wijziging: stop de tool (Ctrl+C) en start hem opnieuw.
+# ============================================================
+
+[zoeken]
+# De modellen waar je naar zoekt. Voeg er een toe door een regel te kopieren.
+modellen = [
+  { merk = "Volkswagen", model = "Polo" },
+  { merk = "Toyota",     model = "Yaris" },
+  { merk = "Renault",    model = "Clio" },
+  { merk = "Volkswagen", model = "Golf" },
+  { merk = "Ford",       model = "Focus" },
+  { merk = "Opel",       model = "Astra" },
+]
+
+# Alleen auto's binnen deze grenzen kunnen een melding geven.
+min_prijs = 2000
+max_prijs = 4000
+min_bouwjaar = 2012
+max_km = 180000
+
+# Kies uit: "benzine", "hybride", "diesel", "lpg", "elektrisch"
+brandstof = ["benzine", "hybride"]
+
+# Kies uit: "handgeschakeld", "automaat"
+transmissie = ["handgeschakeld", "automaat"]
+
+# Hoe vaak de tool zoekt (in minuten).
+interval_minuten = 30
+
+# Hoeveel pagina's met resultaten per model de tool bij de EERSTE keer ophaalt.
+# Daarna stopt hij zodra hij alleen nog bekende advertenties ziet.
+max_paginas_eerste_keer = 10
+max_paginas_daarna = 3
+
+
+[vergelijken]
+# Welke auto's tellen als "vergelijkbaar"?
+max_bouwjaar_verschil = 1
+max_km_verschil = 25000
+
+# Minder vergelijkbare auto's dan dit? Dan geen schatting ("te weinig data").
+min_aantal = 5
+
+# Een vraagprijs is niet de echte verkoopprijs. Daarom gaat er dit percentage af.
+korting_vraagprijs_procent = 5
+
+# De tool slaat ook duurdere en goedkopere auto's op, alleen om mee te vergelijken.
+# Waarom? Als je alleen auto's van 2000-4000 euro opslaat, ligt de mediaan
+# altijd rond de 3000 euro en vind je bijna nooit een goede deal.
+min_prijs_vergelijkingsauto = 1000
+max_prijs_vergelijkingsauto = 7000
+
+# Alleen advertenties die de laatste zoveel dagen nog online stonden tellen mee.
+max_leeftijd_dagen = 90
+
+
+[grenzen]
+# Je krijgt alleen een melding als BEIDE grenzen gehaald worden.
+min_marge = 1000   # marge = geschatte verkoopprijs - vraagprijs
+min_winst = 750    # winst = marge - kosten
+
+
+[kosten]
+reparatiebuffer = 300
+poetsen = 50
+transport = 75
+overschrijving_en_overig = 50
+
+
+[rode_vlaggen]
+# Woorden in titel of beschrijving die een rode vlag geven.
+woorden = ["defect", "motorstoring", "schade", "export", "handelsauto", "opknapper",
+           "motor loopt niet", "startproblemen", "koppakking", "distributieriem kapot",
+           "geen apk", "zonder apk", "handelaar", "meeneemprijs"]
+
+# Woorden die op een rode-vlag-woord lijken maar juist goed zijn.
+uitzonderingen = ["schadevrij", "geen schade", "zonder schade", "niet defect", "geen export"]
+
+# Prijs meer dan dit percentage onder de mediaan van vergelijkbare auto's = verdacht.
+verdacht_goedkoop_procent = 35
+
+# Beschrijving met minder woorden dan dit = vaag.
+min_woorden_beschrijving = 25
+
+
+[rdw]
+aan = true
+# Waarschuwing als de APK binnen zoveel maanden verloopt.
+apk_waarschuwing_maanden = 3
+
+
+[meldingen]
+# Kies: "telegram", "email" of "geen".
+# Je wachtwoorden en tokens zet je NIET hier, maar in geheimen.toml (zie README).
+kanaal = "geen"
+
+
+[sites]
+# Zet een site op false om hem uit te zetten.
+# Getest met verken-sites.bat (28-09-2026):
+#   marktplaats en autoscout24 werken.
+#   gaspedaal en autotrack: robots.txt staat automatisch zoeken NIET toe. Daarom uit.
+#   autowereld: nog geen advertenties herkend. Staat aan zodat verken-sites hem test.
+marktplaats = true
+autoscout24 = true
+gaspedaal = false
+autotrack = false
+autowereld = true
+
+
+[zoek_urls]
+# De zoekpagina per site. De tool vult zelf in:
+#   {merk} en {model}  -> bv. volkswagen en polo
+#   {pagina}           -> 1, 2, 3, ...
+#   {min_prijs} en {max_prijs} -> uit [vergelijken] hierboven
+# Werkt een site niet (verken-sites.bat geeft 0 advertenties)? Zoek dan zelf op die
+# site naar een Volkswagen Polo, kopieer de link uit je browser en zet hem hieronder.
+# Vervang daarin volkswagen door {merk}, polo door {model} en het paginanummer door {pagina}.
+autoscout24 = "https://www.autoscout24.nl/lst/{merk}/{model}?atype=C&cy=NL&pricefrom={min_prijs}&priceto={max_prijs}&sort=age&desc=1&page={pagina}"
+gaspedaal = "https://www.gaspedaal.nl/{merk}/{model}?prijs_van={min_prijs}&prijs_tot={max_prijs}&srt=df-a&p={pagina}"
+autotrack = "https://www.autotrack.nl/aanbod/merk/{merk}/model/{model}?minimumprijs={min_prijs}&maximumprijs={max_prijs}&paginanummer={pagina}"
+autowereld = "https://www.autowereld.nl/{merk}/{model}/?prijs-van={min_prijs}&prijs-tot={max_prijs}&p={pagina}"
+
+
+[verzoeken]
+# Minimaal zoveel seconden tussen twee verzoeken naar dezelfde site.
+wachttijd_seconden = 5
+
+# Hoe lang de tool wacht met een site die ons blokkeert (in uren).
+blokkade_pauze_uren = 6
+
+# Zo stelt de tool zich voor aan websites. Eerlijk en herkenbaar.
+user_agent = "OccasionScanner/1.0 (persoonlijk gebruik; 1 verzoek per 5 seconden)"
+
+
+[dashboard]
+poort = 5000

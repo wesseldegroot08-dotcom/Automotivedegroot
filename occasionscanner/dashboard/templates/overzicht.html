@@ -1,0 +1,81 @@
+{% extends "basis.html" %}
+
+{% block kop %}
+<div class="status">
+  {% for naam, st in sites %}
+    {% if st and st.geblokkeerd_tot and st.geblokkeerd_tot > now_str %}
+      <span><span class="dot off"></span>{{ naam|capitalize }}: geblokkeerd tot {{ st.geblokkeerd_tot[11:16] }}</span>
+    {% else %}
+      <span><span class="dot"></span>{{ naam|capitalize }}: actief</span>
+    {% endif %}
+  {% endfor %}
+  <span>Ververs de pagina voor nieuwe resultaten</span>
+</div>
+{% endblock %}
+
+{% block inhoud %}
+{% if fout %}<div class="banner fout">{{ fout }}</div>{% endif %}
+
+<section class="stats">
+  <div class="stat"><span class="label">Auto's in database</span><b class="num">{{ s.totaal|getal }}</b><span class="muted">incl. vergelijkingsauto's</span></div>
+  <div class="stat"><span class="label">Binnen je criteria</span><b class="num">{{ s.doel }}</b><span class="muted">laatste 30 dagen online</span></div>
+  <div class="stat"><span class="label">Deals</span><b class="num">{{ s.deals }}</b><span class="muted">marge ≥ {{ inst.grenzen.min_marge|euro }} én winst ≥ {{ inst.grenzen.min_winst|euro }}</span></div>
+  <div class="stat"><span class="label">Te weinig data</span><b class="num">{{ s.weinig_data }}</b><span class="muted">nog geen schatting mogelijk</span></div>
+</section>
+
+<form class="filters" method="get">
+  <div class="field"><label for="f-site">Site</label>
+    <select id="f-site" name="site"><option value="">Alle sites</option>
+      {% for n in sitenamen %}<option {% if filters.site == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    </select></div>
+  <div class="field"><label for="f-model">Model</label>
+    <select id="f-model" name="model"><option value="">Alle modellen</option>
+      {% for m in modellen %}<option {% if filters.model == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+    </select></div>
+  <div class="field"><label for="f-prijs">Max vraagprijs (€)</label><input id="f-prijs" name="max_prijs" type="number" step="100" value="{{ filters.max_prijs if filters.max_prijs is not none }}"></div>
+  <div class="field"><label for="f-km">Max kilometerstand</label><input id="f-km" name="max_km" type="number" step="5000" value="{{ filters.max_km if filters.max_km is not none }}"></div>
+  <div class="field"><label for="f-marge">Min marge (€)</label><input id="f-marge" name="min_marge" type="number" step="100" value="{{ filters.min_marge if filters.min_marge is not none }}"></div>
+  <div class="field"><label for="f-winst">Min winst (€)</label><input id="f-winst" name="min_winst" type="number" step="100" value="{{ filters.min_winst if filters.min_winst is not none }}"></div>
+  <label class="check" for="f-deal"><input id="f-deal" name="alleen_deals" value="1" type="checkbox" {% if filters.alleen_deals %}checked{% endif %}> Alleen deals</label>
+  <button type="submit">Filter</button>
+  <a class="knop licht" href="{{ url_for('overzicht') }}">Wis filters</a>
+</form>
+
+<section class="panel">
+  <div class="panel-head"><h2>Gevonden auto's</h2><span class="muted">{{ lijst|length }} auto's · gesorteerd op verwachte winst</span></div>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Auto</th><th class="r">Vraagprijs</th><th class="r">Km</th><th class="r">Marge</th><th class="r">Winst</th><th>Status</th><th>Gevonden</th></tr></thead>
+    <tbody>
+    {% for r in lijst %}{% set a = r.auto %}
+      <tr>
+        <td class="car"><a href="{{ url_for('detail', pk=a.id) }}">{{ a.merk }} {{ a.model }} {{ a.motor or '' }}</a>
+          <small>{{ a.bouwjaar or '?' }} · {{ a.transmissie or '?' }} · {{ a.locatie or '?' }} · {{ a.site }}</small>
+          {% if r.rode_vlaggen or r.rdw_waarschuwing %}<div class="flags">
+            {% for v in r.rode_vlaggen %}<span class="pill p-bad">{{ v }}</span>{% endfor %}
+            {% if r.rdw_waarschuwing %}<span class="pill p-warn">RDW-waarschuwing</span>{% endif %}
+          </div>{% endif %}
+        </td>
+        <td class="r num">{{ a.vraagprijs|euro }}</td>
+        <td class="r num">{{ a.kilometerstand|getal }}</td>
+        <td class="r num {% if r.marge is not none %}{{ 'pos' if r.marge >= 0 else 'neg' }}{% endif %}">{{ r.marge|euro }}</td>
+        <td class="r num {% if r.winst is not none %}{{ 'pos' if r.winst >= 0 else 'neg' }}{% endif %}">{{ r.winst|euro }}</td>
+        <td><span class="pill p-{{ r.status }}">{{ r.status_tekst }}</span></td>
+        <td class="muted num">{{ a.eerst_gevonden[5:16].replace('T', ' ') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">Nog geen auto's gevonden (of niets dat bij je filters past). Start een zoekronde met <code>python main.py zoek</code>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Zelf een advertentie doorrekenen</h2></div>
+  <form class="panel-body" method="post" action="{{ url_for('link') }}">
+    <label for="p-link" class="muted">Plak een link van een advertentie. De tool haalt die ene pagina op (met dezelfde regels: robots.txt en wachttijd) en rekent de auto door.</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="p-link" name="url" type="url" style="flex:1 1 260px" placeholder="https://www.marktplaats.nl/v/auto-s/..." required><button type="submit">Doorrekenen</button></div>
+  </form>
+</section>
+{% endblock %}
