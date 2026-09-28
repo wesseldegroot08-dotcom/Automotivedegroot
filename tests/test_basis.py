@@ -1,7 +1,7 @@
 """Tests. Draaien met: python -m pytest"""
 
 import json
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 
@@ -199,3 +199,66 @@ def test_dashboard_met_demo(tmp_path, inst):
     assert client.get("/?alleen_deals=1").status_code == 200
     detail = client.get("/auto/1").get_data(as_text=True)
     assert "Mediaan vraagprijs" in detail
+
+
+# ---------- netjes ophalen (met een nep-website, zonder internet) ----------
+
+class NepAntwoord:
+    def __init__(self, status, tekst=""):
+        self.status_code, self.text = status, tekst
+
+
+def maak_nep_ophaler(monkeypatch, paginas):
+    """paginas: {url: NepAntwoord of Exception}."""
+    from winstradar import ophalen
+    monkeypatch.setattr(ophalen.time, "sleep", lambda s: None)
+    o = ophalen.NetteOphaler("TestBot/1.0")
+    bezocht = []
+
+    def get(url, timeout):
+        bezocht.append(url)
+        antwoord = paginas.get(url, NepAntwoord(404))
+        if isinstance(antwoord, Exception):
+            raise antwoord
+        return antwoord
+    monkeypatch.setattr(o.sessie, "get", get)
+    return o, bezocht
+
+
+def test_robots_verbod_wordt_gerespecteerd(monkeypatch):
+    from winstradar.ophalen import NietToegestaan
+    o, bezocht = maak_nep_ophaler(monkeypatch, {
+        "https://site.nl/robots.txt": NepAntwoord(200, "User-agent: *\nDisallow: /geheim/"),
+        "https://site.nl/open": NepAntwoord(200, "hallo"),
+    })
+    assert o.haal("https://site.nl/open") == "hallo"
+    with pytest.raises(NietToegestaan):
+        o.haal("https://site.nl/geheim/pagina")
+    assert "https://site.nl/geheim/pagina" not in bezocht   # nooit opgevraagd
+
+
+def test_geen_verbinding_is_geen_verbod(monkeypatch):
+    import requests
+    o, _ = maak_nep_ophaler(monkeypatch, {
+        "https://site.nl/robots.txt": requests.ConnectionError("geen internet"),
+    })
+    with pytest.raises(ConnectionError, match="kon robots.txt"):
+        o.haal("https://site.nl/open")
+
+
+def test_blokkade_wordt_herkend(monkeypatch):
+    from winstradar.ophalen import SiteGeblokkeerd
+    o, _ = maak_nep_ophaler(monkeypatch, {
+        "https://site.nl/robots.txt": NepAntwoord(404),
+        "https://site.nl/a": NepAntwoord(429),
+        "https://site.nl/b": NepAntwoord(200, "<html>Please solve this CAPTCHA</html>"),
+    })
+    with pytest.raises(SiteGeblokkeerd):
+        o.haal("https://site.nl/a")
+    with pytest.raises(SiteGeblokkeerd):
+        o.haal("https://site.nl/b")
+
+
+def test_wachttijd_minimaal_5_seconden():
+    from winstradar.ophalen import NetteOphaler
+    assert NetteOphaler("x", wachttijd=1).wachttijd == 5
