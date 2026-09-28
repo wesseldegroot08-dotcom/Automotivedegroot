@@ -78,17 +78,17 @@
     <span class="muted">Zelfde merk, model, generatie, motor en transmissie · bouwjaar ±{{ inst.vergelijken.max_bouwjaar_verschil }} · km ±{{ inst.vergelijken.max_km_verschil|getal }}</span></div>
   <div class="table-scroll">
   <table>
-    <thead><tr><th>Advertentie</th><th class="r">Bouwjaar</th><th class="r">Km</th><th class="r">Vraagprijs</th><th>Laatst gezien</th></tr></thead>
+    <thead><tr><th>Advertentie</th><th>Site</th><th class="r">Bouwjaar</th><th class="r">Km</th><th class="r">Vraagprijs</th><th>Laatst gezien</th></tr></thead>
     <tbody>
     {% for c in r.vergelijkbaar %}
-      <tr><td>{% if c.link %}<a href="{{ c.link }}" target="_blank" rel="noopener">{{ c.titel }}</a>{% else %}{{ c.titel }}{% endif %}</td><td class="r num">{{ c.bouwjaar }}</td>
+      <tr><td>{% if c.link %}<a href="{{ c.link }}" target="_blank" rel="noopener">{{ c.titel }}</a>{% else %}{{ c.titel }}{% endif %}</td><td class="muted">{{ c.site }}</td><td class="r num">{{ c.bouwjaar }}</td>
         <td class="r num">{{ c.kilometerstand|getal }}</td><td class="r num">{{ c.vraagprijs|euro }}</td><td class="muted num">{{ c.laatst_gezien[:10] }}</td></tr>
     {% endfor %}
     {% for c, reden in r.uitgesloten %}
-      <tr class="muted"><td>Niet meegeteld: {{ c.titel }} <small>({{ reden }})</small></td><td class="r num">{{ c.bouwjaar }}</td>
+      <tr class="muted"><td>Niet meegeteld: {{ c.titel }} <small>({{ reden }})</small></td><td>{{ c.site }}</td><td class="r num">{{ c.bouwjaar }}</td>
         <td class="r num">{{ c.kilometerstand|getal }}</td><td class="r num">{{ c.vraagprijs|euro }}</td><td>{{ c.laatst_gezien[:10] }}</td></tr>
     {% endfor %}
-    {% if not r.vergelijkbaar and not r.uitgesloten %}<tr><td colspan="5" class="muted">Geen vergelijkbare auto's.</td></tr>{% endif %}
+    {% if not r.vergelijkbaar and not r.uitgesloten %}<tr><td colspan="6" class="muted">Geen vergelijkbare auto's.</td></tr>{% endif %}
     </tbody>
   </table>
   </div>

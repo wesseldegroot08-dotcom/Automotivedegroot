@@ -101,7 +101,27 @@ kanaal = "geen"
 
 [sites]
 # Zet een site op false om hem uit te zetten.
+# Marktplaats is getest en werkt. De andere sites zijn nog NIET getest:
+# dubbelklik op verken-sites.bat om te zien welke werken.
 marktplaats = true
+autoscout24 = true
+gaspedaal = true
+autotrack = true
+autowereld = true
+
+
+[zoek_urls]
+# De zoekpagina per site. De tool vult zelf in:
+#   {merk} en {model}  -> bv. volkswagen en polo
+#   {pagina}           -> 1, 2, 3, ...
+#   {min_prijs} en {max_prijs} -> uit [vergelijken] hierboven
+# Werkt een site niet (verken-sites.bat geeft 0 advertenties)? Zoek dan zelf op die
+# site naar een Volkswagen Polo, kopieer de link uit je browser en zet hem hieronder.
+# Vervang daarin volkswagen door {merk}, polo door {model} en het paginanummer door {pagina}.
+autoscout24 = "https://www.autoscout24.nl/lst/{merk}/{model}?atype=C&cy=NL&pricefrom={min_prijs}&priceto={max_prijs}&sort=age&desc=1&page={pagina}"
+gaspedaal = "https://www.gaspedaal.nl/{merk}/{model}?prijs_van={min_prijs}&prijs_tot={max_prijs}&srt=df-a&p={pagina}"
+autotrack = "https://www.autotrack.nl/aanbod/merk/{merk}/model/{model}?minimumprijs={min_prijs}&maximumprijs={max_prijs}&paginanummer={pagina}"
+autowereld = "https://www.autowereld.nl/{merk}/{model}/?prijs-van={min_prijs}&prijs-tot={max_prijs}&p={pagina}"
 
 
 [verzoeken]

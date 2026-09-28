@@ -24,6 +24,10 @@
 </section>
 
 <form class="filters" method="get">
+  <div class="field"><label for="f-site">Site</label>
+    <select id="f-site" name="site"><option value="">Alle sites</option>
+      {% for n in sitenamen %}<option {% if filters.site == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    </select></div>
   <div class="field"><label for="f-model">Model</label>
     <select id="f-model" name="model"><option value="">Alle modellen</option>
       {% for m in modellen %}<option {% if filters.model == m %}selected{% endif %}>{{ m }}</option>{% endfor %}

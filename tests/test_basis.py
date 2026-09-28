@@ -286,3 +286,80 @@ def test_zoekronde_slaat_dure_autos_over(tmp_path, inst):
     aantal_modellen = len(inst["zoeken"]["modellen"])
     assert teller["gezien"] == aantal_modellen            # alleen de auto van EUR 3100
     assert teller["overgeslagen"] == 2 * aantal_modellen  # EUR 15950 en geen prijs
+
+
+# ---------- algemene herkenning voor andere sites ----------
+# Let op: deze pagina's zijn nagebouwd. De echte sites kunnen anders zijn opgebouwd.
+
+def _pagina(data, soort="application/json", naam="__NEXT_DATA__"):
+    return f'<html><script id="{naam}" type="{soort}">{json.dumps(data)}</script></html>'
+
+
+def test_algemeen_herkent_next_data_zoals_autoscout24():
+    from winstradar.sites.algemeen import advertenties_uit_pagina
+    data = {"props": {"pageProps": {"numberOfResults": 812, "listings": [
+        {"id": "abc-1", "url": "/aanbod/volkswagen-polo-1-2-tsi-abc-1",
+         "price": {"priceFormatted": "€ 3.100,-"},
+         "vehicle": {"make": "Volkswagen", "model": "Polo", "modelVersionInput": "1.2 TSI Comfortline",
+                     "mileageInKm": "142.000 km", "fuel": "Benzine", "transmission": "Handgeschakeld"},
+         "tracking": {"firstRegistration": "03-2014"},
+         "location": {"city": "Utrecht"}},
+        {"id": "abc-2", "url": "/aanbod/volkswagen-polo-abc-2",
+         "price": {"priceFormatted": "€ 12.950,-"},
+         "vehicle": {"make": "Volkswagen", "model": "Polo", "mileageInKm": "40.000 km"},
+         "tracking": {"firstRegistration": "05-2021"}},
+    ]}}}
+    ads = advertenties_uit_pagina(_pagina(data), "autoscout24", "https://www.autoscout24.nl/lst/volkswagen/polo")
+    assert len(ads) == 2
+    a = vul_aan(ads[0], "Volkswagen", "Polo")
+    assert a.link == "https://www.autoscout24.nl/aanbod/volkswagen-polo-1-2-tsi-abc-1"
+    assert (a.vraagprijs, a.bouwjaar, a.kilometerstand) == (3100, 2014, 142000)
+    assert a.motor_sleutel == "1.2 turbo" and a.transmissie == "handgeschakeld"
+    assert a.locatie == "Utrecht" and a.advertentie_id == "abc-1"
+    assert "Polo" in a.titel
+
+
+def test_algemeen_herkent_ld_json_lijst():
+    from winstradar.sites.algemeen import advertenties_uit_pagina
+    data = {"@context": "https://schema.org", "@type": "ItemList", "itemListElement": [
+        {"@type": "ListItem", "item": {
+            "@type": "Car", "name": "Toyota Yaris 1.33 VVT-i Aspiration", "url": "https://site.nl/auto/9",
+            "brand": {"@type": "Brand", "name": "Toyota"}, "vehicleModelDate": "2013",
+            "mileageFromOdometer": {"@type": "QuantitativeValue", "value": 118000, "unitCode": "KMT"},
+            "offers": {"@type": "Offer", "price": "3450.00", "priceCurrency": "EUR",
+                       "seller": {"name": "Autobedrijf Jansen"}}}}]}
+    ads = advertenties_uit_pagina(_pagina(data, "application/ld+json", "x"), "site", "https://site.nl/zoek")
+    assert len(ads) == 1
+    a = ads[0]
+    assert (a.titel, a.vraagprijs, a.bouwjaar, a.kilometerstand) == \
+        ("Toyota Yaris 1.33 VVT-i Aspiration", 3450, 2013, 118000)
+
+
+def test_algemeen_negeert_pagina_zonder_advertenties():
+    from winstradar.sites.algemeen import advertenties_uit_pagina
+    data = {"props": {"menu": [{"title": "Home", "url": "/"}], "footer": {"price": "gratis"}}}
+    assert advertenties_uit_pagina(_pagina(data), "x", "https://x.nl") == []
+
+
+def test_algemene_site_zoekt_en_filtert(monkeypatch, inst):
+    from winstradar.sites.algemeen import AlgemeneZoekSite
+    data = {"items": [
+        {"id": "1", "url": "/a/1", "title": "Volkswagen Polo 1.2 TSI", "price": 3100, "mileage": 142000},
+        {"id": "2", "url": "/a/2", "title": "Volkswagen Golf Plus 1.4", "price": 3500, "mileage": 150000},
+    ]}
+    site = AlgemeneZoekSite(None, inst, "testsite", "https://t.nl/{merk}/{model}?p={pagina}&max={max_prijs}")
+    assert site.maak_zoek_url("Volkswagen", "Polo", 0) == "https://t.nl/volkswagen/polo?p=1&max=7000"
+
+    class NepOphaler:
+        def haal(self, url):
+            return _pagina(data) if url.endswith("max=7000") and "p=1&" in url else None
+    site.ophaler = NepOphaler()
+    polo = list(site.zoek("Volkswagen", "Polo", 3, lambda _id: False))
+    assert [a.advertentie_id for a in polo] == ["1"]
+    assert list(site.zoek("Volkswagen", "Golf", 3, lambda _id: False)) == []   # Golf Plus = ander model
+
+
+def test_alle_sites_staan_in_instellingen(inst):
+    from winstradar.sites import actieve_sites
+    namen = [s.naam for s in actieve_sites(None, inst)]
+    assert namen == ["marktplaats", "autoscout24", "gaspedaal", "autotrack", "autowereld"]

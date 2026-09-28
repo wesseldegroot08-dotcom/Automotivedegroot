@@ -2,7 +2,7 @@
 
 Een tool die auto-advertenties zoekt en uitrekent of je er winst op maakt.
 
-- Zoekt elke 30 minuten op Marktplaats (meer sites later).
+- Zoekt elke 30 minuten op Marktplaats, AutoScout24, Gaspedaal, AutoTrack en Autowereld.
 - Slaat alles op in een database op je laptop.
 - Rekent per auto de **marge** en de **winst** uit, en laat de hele berekening zien.
 - Controleert het kenteken bij de RDW (APK, datum eerste toelating, tellerstand).
@@ -24,6 +24,7 @@ Een tool die auto-advertenties zoekt en uitrekent of je er winst op maakt.
 | `installeren.bat` | Installeert alles wat de tool nodig heeft | Eén keer |
 | `demo.bat` | Dashboard met verzonnen auto's | Om te kijken hoe het werkt |
 | `test-marktplaats.bat` | Kijkt of Marktplaats werkt | Voordat je echt begint |
+| `verken-sites.bat` | Kijkt per site of zoeken werkt en mag | Voordat je echt begint, en als een site niets meer vindt |
 | `start.bat` | Zoekt elke 30 minuten + opent het dashboard | Elke keer dat je hem gebruikt |
 
 Stoppen: sluit het zwarte venster.
@@ -232,6 +233,20 @@ Mediaan van 7 vergelijkbare Polo's      € 4.750,00
 
 ---
 
-## 12. Nog te bouwen
+## 12. Sites
 
-- Modules voor AutoScout24, Gaspedaal, AutoTrack en Autowereld. Elke site krijgt eerst een robots.txt-check. Staat een site het niet toe, dan komt die module er niet.
+| Site | Status |
+|---|---|
+| Marktplaats | Getest en werkt (via de gewone zoekpagina; de API mag niet volgens robots.txt) |
+| AutoScout24, Gaspedaal, AutoTrack, Autowereld | Gebouwd, maar **nog niet getest** tegen de echte site |
+
+Draai `verken-sites.bat`. Per site zie je:
+
+- **WERKT** → prima, laat hem aan staan.
+- **MAG NIET (robots.txt)** → de site verbiedt automatisch zoeken. Zet hem uit in `instellingen.toml` onder `[sites]` (bijvoorbeeld `gaspedaal = false`). De tool haalt er toch al niets op.
+- **ZOEK-URL KLOPT NIET** → zoek zelf op die site naar een Volkswagen Polo, kopieer de link uit je browser en zet hem in `instellingen.toml` onder `[zoek_urls]`. Vervang `volkswagen` door `{merk}`, `polo` door `{model}` en het paginanummer door `{pagina}`.
+- **GEEN ADVERTENTIES HERKEND** → de site is anders opgebouwd dan verwacht. De pagina staat in `logs/verkenning/`. Stuur die op, dan kan de herkenning aangepast worden.
+
+Dezelfde auto op meerdere sites (bijvoorbeeld op AutoTrack én Gaspedaal) wordt herkend aan kenteken of kilometerstand en telt maar één keer.
+
+**Let op met handelaren.** Op AutoScout24, AutoTrack en Gaspedaal staan vooral auto's van autobedrijven. Die vragen meer (garantie, BOVAG). Als hun prijzen meetellen als vergelijking, lijkt een particuliere auto op Marktplaats sneller een deal. Controleer bij een melding dus altijd welke vergelijkbare auto's zijn gebruikt (staat op de detailpagina, met de site erbij).

@@ -54,12 +54,15 @@ def maak_app(inst, db_pad=None, demo=False):
             except ValueError:
                 return None
 
-        filters = {"model": f.get("model", ""), "max_prijs": als_getal("max_prijs"), "max_km": als_getal("max_km"),
+        sitenamen = sorted({r.auto["site"] for r in resultaten})
+        filters = {"site": f.get("site", ""), "model": f.get("model", ""), "max_prijs": als_getal("max_prijs"), "max_km": als_getal("max_km"),
                    "min_marge": als_getal("min_marge"), "min_winst": als_getal("min_winst"),
                    "alleen_deals": f.get("alleen_deals") == "1"}
         lijst = []
         for r in resultaten:
             a = r.auto
+            if filters["site"] and a["site"] != filters["site"]:
+                continue
             if filters["model"] and f"{a['merk']} {a['model']}" != filters["model"]:
                 continue
             if filters["max_prijs"] is not None and a["vraagprijs"] > filters["max_prijs"]:
@@ -83,7 +86,7 @@ def maak_app(inst, db_pad=None, demo=False):
         }
         statussen = database.alle_site_statussen(conn)
         sites = [(naam, statussen.get(naam)) for naam, aan in inst.get("sites", {}).items() if aan]
-        return render_template("overzicht.html", lijst=lijst, modellen=modellen, filters=filters,
+        return render_template("overzicht.html", lijst=lijst, modellen=modellen, sitenamen=sitenamen, filters=filters,
                                s=samenvatting, sites=sites, inst=inst, fout=f.get("fout"),
                                now_str=database.nu())
 

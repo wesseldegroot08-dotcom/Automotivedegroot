@@ -8,6 +8,7 @@ Gebruik (typ in de terminal, in deze map):
     python main.py handmatig         zelf de gegevens van een auto invoeren
     python main.py test-melding      stuur een testbericht (Telegram/e-mail)
     python main.py test-marktplaats  kijk of Marktplaats nog werkt (haalt 1 pagina op)
+    python main.py verken-sites      kijk per site of het werkt (robots.txt + 1 zoekpagina)
     python main.py demo              bekijk het dashboard met verzonnen auto's
 """
 
@@ -131,10 +132,77 @@ def cmd_test_marktplaats(inst):
         print("Geen advertenties. Waarschijnlijk is de website veranderd. Laat het mij weten.")
 
 
+def cmd_verken_sites(inst):
+    from winstradar.instellingen import LOG_MAP
+    from winstradar.sites import alle_sitenamen, maak_site
+    from winstradar.sites.algemeen import advertenties_uit_pagina
+
+    ophaler = maak_ophaler(inst)
+    m = inst["zoeken"]["modellen"][0]
+    map_ = LOG_MAP / "verkenning"
+    map_.mkdir(parents=True, exist_ok=True)
+    uitslag = {}
+    print(f"Per site: robots.txt controleren en 1 zoekpagina ophalen voor {m['merk']} {m['model']}.")
+    print("Dit duurt ongeveer een halve minuut per site.\n")
+
+    for naam in alle_sitenamen(inst):
+        site = maak_site(naam, ophaler, inst)
+        print(f"=== {naam} ===")
+        try:
+            if naam == "marktplaats":
+                gevonden = list(site.zoek(m["merk"], m["model"], 1, lambda _id: False))
+                herkend = gevonden
+            else:
+                url = site.maak_zoek_url(m["merk"], m["model"], 0)
+                print(f"  Zoek-URL: {url}")
+                if not ophaler.mag_ophalen(url):
+                    print("  robots.txt staat deze zoekpagina NIET toe. De tool slaat deze site over.")
+                    print(f"  Zet in instellingen.toml onder [sites]: {naam} = false")
+                    uitslag[naam] = "MAG NIET (robots.txt)"
+                    continue
+                html = ophaler.haal(url)
+                if not html:
+                    print("  Deze zoekpagina bestaat niet (fout 404). De zoek-URL moet aangepast worden.")
+                    uitslag[naam] = "ZOEK-URL KLOPT NIET"
+                    continue
+                (map_ / f"{naam}.html").write_text(html, encoding="utf-8")
+                herkend = advertenties_uit_pagina(html, naam, url)
+                gevonden = [a for a in herkend if site.hoort_bij_model(a, m["merk"], m["model"])]
+        except NietToegestaan as fout:
+            print(f"  robots.txt staat het niet toe: {fout}")
+            uitslag[naam] = "MAG NIET (robots.txt)"
+            continue
+        except SiteGeblokkeerd as fout:
+            print(f"  De site blokkeert: {fout}")
+            uitslag[naam] = "GEBLOKKEERD"
+            continue
+        except ConnectionError as fout:
+            print(f"  Verbindingsprobleem: {fout}")
+            uitslag[naam] = "GEEN VERBINDING"
+            continue
+
+        print(f"  {len(herkend)} advertenties herkend, waarvan {len(gevonden)} echt een {m['merk']} {m['model']}.")
+        for adv in gevonden[:3]:
+            vul_aan(adv, m["merk"], m["model"])
+            print(f"    {adv.vraagprijs} euro | {adv.bouwjaar} | {adv.kilometerstand} km | "
+                  f"{adv.transmissie} | {adv.titel[:45]}")
+        if gevonden:
+            uitslag[naam] = f"WERKT ({len(gevonden)} gevonden)"
+        else:
+            print(f"  Geen advertenties herkend. De pagina is bewaard in logs/verkenning/{naam}.html")
+            uitslag[naam] = "GEEN ADVERTENTIES HERKEND"
+        print()
+
+    print("\n=========== SAMENVATTING ===========")
+    for naam, tekst in uitslag.items():
+        print(f"  {naam:<14} {tekst}")
+    print("\nMaak een foto van dit scherm en stuur hem op.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Occasion Winstradar")
     parser.add_argument("opdracht", choices=["start", "zoek", "dashboard", "link", "handmatig",
-                                             "test-melding", "test-marktplaats", "demo"])
+                                             "test-melding", "test-marktplaats", "verken-sites", "demo"])
     parser.add_argument("url", nargs="?", help="alleen bij 'link'")
     args = parser.parse_args()
 
@@ -159,6 +227,8 @@ def main():
             cmd_test_melding(inst, geheimen)
         elif args.opdracht == "test-marktplaats":
             cmd_test_marktplaats(inst)
+        elif args.opdracht == "verken-sites":
+            cmd_verken_sites(inst)
         elif args.opdracht == "demo":
             from winstradar.demo import vul_demo
             DATA_MAP.mkdir(exist_ok=True)
