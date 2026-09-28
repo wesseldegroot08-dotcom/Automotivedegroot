@@ -1,8 +1,8 @@
 @echo off
-rem Dubbelklik op dit bestand om Occasion Winstradar te installeren (eenmalig).
+rem Dubbelklik op dit bestand om Occasion Scanner te installeren (eenmalig).
 cd /d "%~dp0"
 echo.
-echo === Occasion Winstradar installeren ===
+echo === Occasion Scanner installeren ===
 echo.
 set "PY="
 set "CHECK=import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)"

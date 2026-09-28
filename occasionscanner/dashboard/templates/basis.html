@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titel %}Occasion Winstradar{% endblock %}</title>
+<title>{% block titel %}Occasion Scanner{% endblock %}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
 :root{
@@ -97,7 +97,7 @@ tbody tr:hover{background:var(--surface-2)}
 <body>
 <div class="wrap">
   <header>
-    <a href="{{ url_for('overzicht') }}"><div class="label">Auto-inkoop dashboard</div><h1>Occasion Winstradar</h1></a>
+    <a href="{{ url_for('overzicht') }}"><div class="label">Auto-inkoop dashboard</div><h1>Occasion Scanner</h1></a>
     {% block kop %}{% endblock %}
   </header>
   {% if demo %}<div class="banner demo"><b>DEMO</b> · Dit zijn verzonnen auto's om te laten zien hoe het werkt. De links doen daarom niets.

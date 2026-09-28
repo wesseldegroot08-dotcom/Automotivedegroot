@@ -1,4 +1,4 @@
-# Occasion Winstradar
+# Occasion Scanner
 
 Een tool die auto-advertenties zoekt en uitrekent of je er winst op maakt.
 
@@ -215,7 +215,7 @@ Mediaan van 7 vergelijkbare Polo's      € 4.750,00
 - Maximaal **1 verzoek per 5 seconden** per site.
 - Controleert **robots.txt** voor elke link. Mag het niet? Dan haalt hij niets op.
 - Geen inlog, geen captcha omzeilen, geen trucs. De tool zegt eerlijk wie hij is.
-- Blokkeert een site? Dan stopt de tool 6 uur met die site, schrijft het in `logs/winstradar.log` en gaat door met de rest.
+- Blokkeert een site? Dan stopt de tool 6 uur met die site, schrijft het in `logs/occasionscanner.log` en gaat door met de rest.
 
 ---
 
@@ -226,9 +226,9 @@ Mediaan van 7 vergelijkbare Polo's      € 4.750,00
 | Instellingen | `instellingen.toml` |
 | Wachtwoorden/tokens | `geheimen.toml` (maak je zelf) |
 | Database | `data/autos.db` |
-| Logboek | `logs/winstradar.log` |
-| Code | `winstradar/` |
-| Site-modules | `winstradar/sites/` |
+| Logboek | `logs/occasionscanner.log` |
+| Code | `occasionscanner/` |
+| Site-modules | `occasionscanner/sites/` |
 | Tests | `tests/` (draaien met `python -m pytest`) |
 
 ---

@@ -1,4 +1,4 @@
-"""Occasion Winstradar - startbestand.
+"""Occasion Scanner - startbestand.
 
 Gebruik (typ in de terminal, in deze map):
     python main.py start             zoek elke 30 minuten + open het dashboard
@@ -20,17 +20,17 @@ import webbrowser
 if sys.version_info < (3, 11):
     sys.exit("Deze tool heeft Python 3.11 of nieuwer nodig. Zie de README.")
 
-from winstradar import analyse, database, meldingen
-from winstradar.advertentie import Advertentie
-from winstradar.instellingen import DATA_MAP, laad_geheimen, laad_instellingen
-from winstradar.logboek import maak_logboek
-from winstradar.normaliseren import lees_getal, vul_aan
-from winstradar.ophalen import NietToegestaan, SiteGeblokkeerd
-from winstradar.zoeker import blijf_zoeken, maak_ophaler, zoekronde
+from occasionscanner import analyse, database, meldingen
+from occasionscanner.advertentie import Advertentie
+from occasionscanner.instellingen import DATA_MAP, laad_geheimen, laad_instellingen
+from occasionscanner.logboek import maak_logboek
+from occasionscanner.normaliseren import lees_getal, vul_aan
+from occasionscanner.ophalen import NietToegestaan, SiteGeblokkeerd
+from occasionscanner.zoeker import blijf_zoeken, maak_ophaler, zoekronde
 
 
 def start_dashboard(inst, db_pad=None, open_browser=True, demo=False):
-    from winstradar.dashboard.app import maak_app
+    from occasionscanner.dashboard.app import maak_app
     poort = inst["dashboard"]["poort"]
     adres = f"http://127.0.0.1:{poort}"
     print(f"\nDashboard: {adres}  (open deze link in je browser)\n")
@@ -47,7 +47,7 @@ def cmd_start(inst, geheimen):
 
 
 def cmd_link(inst, url):
-    from winstradar.dashboard.app import reken_link_door
+    from occasionscanner.dashboard.app import reken_link_door
     conn = database.verbind()
     try:
         pk = reken_link_door(conn, maak_ophaler(inst), inst, url)
@@ -87,7 +87,7 @@ def cmd_handmatig(inst):
     conn = database.verbind()
     pk, _ = database.sla_op(conn, adv)
     if adv.kenteken and inst["rdw"]["aan"]:
-        from winstradar import rdw
+        from occasionscanner import rdw
         try:
             database.sla_rdw_op(conn, pk, rdw.haal_op(maak_ophaler(inst), adv.kenteken))
         except (ConnectionError, SiteGeblokkeerd) as fout:
@@ -99,13 +99,13 @@ def cmd_handmatig(inst):
 def cmd_test_melding(inst, geheimen):
     if inst["meldingen"]["kanaal"] == "geen":
         sys.exit("Kanaal staat op 'geen'. Zet kanaal op 'telegram' of 'email' in instellingen.toml.")
-    gelukt = meldingen.verstuur("Testbericht van Occasion Winstradar. Meldingen werken!",
-                                "Test Occasion Winstradar", inst, geheimen)
-    print("Gelukt! Kijk op je telefoon of in je mail." if gelukt else "Niet gelukt. Kijk in logs/winstradar.log.")
+    gelukt = meldingen.verstuur("Testbericht van Occasion Scanner. Meldingen werken!",
+                                "Test Occasion Scanner", inst, geheimen)
+    print("Gelukt! Kijk op je telefoon of in je mail." if gelukt else "Niet gelukt. Kijk in logs/occasionscanner.log.")
 
 
 def cmd_test_marktplaats(inst):
-    from winstradar.sites.marktplaats import Marktplaats
+    from occasionscanner.sites.marktplaats import Marktplaats
     site = Marktplaats(maak_ophaler(inst), inst)
     m = inst["zoeken"]["modellen"][0]
     print(f"Test: één pagina zoeken naar {m['merk']} {m['model']} (duurt ongeveer 10 seconden)...")
@@ -133,9 +133,9 @@ def cmd_test_marktplaats(inst):
 
 
 def cmd_verken_sites(inst):
-    from winstradar.instellingen import LOG_MAP
-    from winstradar.sites import alle_sitenamen, maak_site
-    from winstradar.sites.algemeen import advertenties_uit_pagina
+    from occasionscanner.instellingen import LOG_MAP
+    from occasionscanner.sites import alle_sitenamen, maak_site
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
 
     ophaler = maak_ophaler(inst)
     m = inst["zoeken"]["modellen"][0]
@@ -200,7 +200,7 @@ def cmd_verken_sites(inst):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Occasion Winstradar")
+    parser = argparse.ArgumentParser(description="Occasion Scanner")
     parser.add_argument("opdracht", choices=["start", "zoek", "dashboard", "link", "handmatig",
                                              "test-melding", "test-marktplaats", "verken-sites", "demo"])
     parser.add_argument("url", nargs="?", help="alleen bij 'link'")
@@ -230,7 +230,7 @@ def main():
         elif args.opdracht == "verken-sites":
             cmd_verken_sites(inst)
         elif args.opdracht == "demo":
-            from winstradar.demo import vul_demo
+            from occasionscanner.demo import vul_demo
             DATA_MAP.mkdir(exist_ok=True)
             vul_demo(DATA_MAP / "demo.db")
             start_dashboard(inst, DATA_MAP / "demo.db", demo=True)

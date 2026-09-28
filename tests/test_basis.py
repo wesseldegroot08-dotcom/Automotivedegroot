@@ -5,13 +5,13 @@ from datetime import date
 
 import pytest
 
-from winstradar import analyse, database, rdw, rode_vlaggen
-from winstradar.advertentie import Advertentie
-from winstradar.generaties import bepaal_generatie
-from winstradar.instellingen import laad_instellingen
-from winstradar.normaliseren import herken_motor, herken_transmissie, toon_kenteken, vul_aan, zoek_kenteken
-from winstradar.sites.basis import json_uit_html
-from winstradar.sites.marktplaats import hoort_bij_model, listing_naar_advertentie
+from occasionscanner import analyse, database, rdw, rode_vlaggen
+from occasionscanner.advertentie import Advertentie
+from occasionscanner.generaties import bepaal_generatie
+from occasionscanner.instellingen import laad_instellingen
+from occasionscanner.normaliseren import herken_motor, herken_transmissie, toon_kenteken, vul_aan, zoek_kenteken
+from occasionscanner.sites.basis import json_uit_html
+from occasionscanner.sites.marktplaats import hoort_bij_model, listing_naar_advertentie
 
 
 @pytest.fixture
@@ -189,8 +189,8 @@ def test_json_uit_html():
 # ---------- dashboard ----------
 
 def test_dashboard_met_demo(tmp_path, inst):
-    from winstradar.dashboard.app import maak_app
-    from winstradar.demo import vul_demo
+    from occasionscanner.dashboard.app import maak_app
+    from occasionscanner.demo import vul_demo
     pad = tmp_path / "demo.db"
     vul_demo(pad)
     client = maak_app(inst, pad, demo=True).test_client()
@@ -214,7 +214,7 @@ class NepAntwoord:
 
 def maak_nep_ophaler(monkeypatch, paginas):
     """paginas: {url: NepAntwoord of Exception}."""
-    from winstradar import ophalen
+    from occasionscanner import ophalen
     monkeypatch.setattr(ophalen.time, "sleep", lambda s: None)
     o = ophalen.NetteOphaler("TestBot/1.0")
     bezocht = []
@@ -230,7 +230,7 @@ def maak_nep_ophaler(monkeypatch, paginas):
 
 
 def test_robots_verbod_wordt_gerespecteerd(monkeypatch):
-    from winstradar.ophalen import NietToegestaan
+    from occasionscanner.ophalen import NietToegestaan
     o, bezocht = maak_nep_ophaler(monkeypatch, {
         "https://site.nl/robots.txt": NepAntwoord(200, "User-agent: *\nDisallow: /geheim/"),
         "https://site.nl/open": NepAntwoord(200, "hallo"),
@@ -251,7 +251,7 @@ def test_geen_verbinding_is_geen_verbod(monkeypatch):
 
 
 def test_blokkade_wordt_herkend(monkeypatch):
-    from winstradar.ophalen import SiteGeblokkeerd
+    from occasionscanner.ophalen import SiteGeblokkeerd
     o, _ = maak_nep_ophaler(monkeypatch, {
         "https://site.nl/robots.txt": NepAntwoord(404),
         "https://site.nl/a": NepAntwoord(429),
@@ -264,12 +264,12 @@ def test_blokkade_wordt_herkend(monkeypatch):
 
 
 def test_wachttijd_minimaal_5_seconden():
-    from winstradar.ophalen import NetteOphaler
+    from occasionscanner.ophalen import NetteOphaler
     assert NetteOphaler("x", wachttijd=1).wachttijd == 5
 
 
 def test_zoekronde_slaat_dure_autos_over(tmp_path, inst):
-    from winstradar import zoeker
+    from occasionscanner import zoeker
 
     class NepSite:
         naam = "nep"
@@ -296,7 +296,7 @@ def _pagina(data, soort="application/json", naam="__NEXT_DATA__"):
 
 
 def test_algemeen_herkent_next_data_zoals_autoscout24():
-    from winstradar.sites.algemeen import advertenties_uit_pagina
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
     data = {"props": {"pageProps": {"numberOfResults": 812, "listings": [
         {"id": "abc-1", "url": "/aanbod/volkswagen-polo-1-2-tsi-abc-1",
          "price": {"priceFormatted": "€ 3.100,-"},
@@ -320,7 +320,7 @@ def test_algemeen_herkent_next_data_zoals_autoscout24():
 
 
 def test_algemeen_herkent_ld_json_lijst():
-    from winstradar.sites.algemeen import advertenties_uit_pagina
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
     data = {"@context": "https://schema.org", "@type": "ItemList", "itemListElement": [
         {"@type": "ListItem", "item": {
             "@type": "Car", "name": "Toyota Yaris 1.33 VVT-i Aspiration", "url": "https://site.nl/auto/9",
@@ -336,13 +336,13 @@ def test_algemeen_herkent_ld_json_lijst():
 
 
 def test_algemeen_negeert_pagina_zonder_advertenties():
-    from winstradar.sites.algemeen import advertenties_uit_pagina
+    from occasionscanner.sites.algemeen import advertenties_uit_pagina
     data = {"props": {"menu": [{"title": "Home", "url": "/"}], "footer": {"price": "gratis"}}}
     assert advertenties_uit_pagina(_pagina(data), "x", "https://x.nl") == []
 
 
 def test_algemene_site_zoekt_en_filtert(monkeypatch, inst):
-    from winstradar.sites.algemeen import AlgemeneZoekSite
+    from occasionscanner.sites.algemeen import AlgemeneZoekSite
     data = {"items": [
         {"id": "1", "url": "/a/1", "title": "Volkswagen Polo 1.2 TSI", "price": 3100, "mileage": 142000},
         {"id": "2", "url": "/a/2", "title": "Volkswagen Golf Plus 1.4", "price": 3500, "mileage": 150000},
@@ -360,6 +360,6 @@ def test_algemene_site_zoekt_en_filtert(monkeypatch, inst):
 
 
 def test_alle_sites_staan_in_instellingen(inst):
-    from winstradar.sites import actieve_sites
+    from occasionscanner.sites import actieve_sites
     namen = [s.naam for s in actieve_sites(None, inst)]
     assert namen == ["marktplaats", "autoscout24", "gaspedaal", "autotrack", "autowereld"]

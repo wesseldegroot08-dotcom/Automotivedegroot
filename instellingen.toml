@@ -1,5 +1,5 @@
 # ============================================================
-#  Instellingen van Occasion Winstradar
+#  Instellingen van Occasion Scanner
 #  Pas hier je zoekcriteria, grenzen en kosten aan.
 #  Regels die met # beginnen zijn uitleg en doen niets.
 #  Na een wijziging: stop de tool (Ctrl+C) en start hem opnieuw.
@@ -132,7 +132,7 @@ wachttijd_seconden = 5
 blokkade_pauze_uren = 6
 
 # Zo stelt de tool zich voor aan websites. Eerlijk en herkenbaar.
-user_agent = "OccasionWinstradar/1.0 (persoonlijk gebruik; 1 verzoek per 5 seconden)"
+user_agent = "OccasionScanner/1.0 (persoonlijk gebruik; 1 verzoek per 5 seconden)"
 
 
 [dashboard]
