@@ -206,6 +206,11 @@ export function vertraagd(fn, ms = 400) {
   return wrapper;
 }
 
+/** Testversie binnen Claude (artifact): geen RDW, geen offline, geen installeren. */
+export function isPreview() {
+  return Boolean(window.TAXATIE_PREVIEW);
+}
+
 export function isStandalone() {
   return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }

@@ -1,6 +1,6 @@
 // Scherm: Taxeren (nieuwe taxatie of een auto uit het archief bewerken).
 
-import { h, leeg, icoon, getalVeld, veld, tekstvak, segmenten, toast, paneel, bevestig, vertraagd, isStandalone, leesLokaal, schrijfLokaal } from '../ui.js';
+import { h, leeg, icoon, getalVeld, veld, tekstvak, segmenten, toast, paneel, bevestig, vertraagd, isStandalone, isPreview, leesLokaal, schrijfLokaal } from '../ui.js';
 import { db, leesInstellingen, haalConcept, bewaarAuto, zetInArchief, verwijderAuto, bodVoor, bewaarFoto, haalFoto, verwijderFoto, nieuwId } from '../db.js';
 import { OPTIES, SCHADE_TYPES, TRANSMISSIES, schadeLabel } from '../constants.js';
 import { formatEuro, formatGetal, formatIsoDatum, formatDatumKort } from '../format.js';
@@ -19,7 +19,7 @@ export async function toonTaxeren(root, { id, herlaad }) {
     leeg(
       root,
       h('header', { class: 'pagina-kop' }, h('h1', {}, 'Niet gevonden')),
-      h('div', { class: 'kaart' }, h('p', {}, 'Deze taxatie bestaat niet (meer).'), h('a', { class: 'knop', href: '#/archief' }, 'Naar archief'))
+      h('div', { class: 'kaart' }, h('p', {}, 'Deze taxatie bestaat niet (meer).'), h('a', { class: 'knop', href: '#archief' }, 'Naar archief'))
     );
     return () => {};
   }
@@ -38,7 +38,7 @@ export async function toonTaxeren(root, { id, herlaad }) {
     ? h(
         'header',
         { class: 'pagina-kop' },
-        h('a', { class: 'terug', href: '#/archief' }, icoon('links'), 'Archief'),
+        h('a', { class: 'terug', href: '#archief' }, icoon('links'), 'Archief'),
         h('h1', {}, 'Bewerken'),
         h('p', { class: 'pagina-sub' }, `Getaxeerd op ${formatDatumKort(auto.getaxeerdOp)}`)
       )
@@ -46,7 +46,18 @@ export async function toonTaxeren(root, { id, herlaad }) {
 
   // ---------- installeer-tip ----------
   let tip = null;
-  if (!isStandalone() && !leesLokaal('tipVerborgen')) {
+  if (isPreview()) {
+    tip = h(
+      'div',
+      { class: 'kaart tip' },
+      h('h2', {}, 'Testversie in Claude'),
+      h(
+        'p',
+        { class: 'klein' },
+        'Hier kun je alles uitproberen. De kenteken-check werkt in deze testversie niet, omdat de pagina de RDW niet mag bereiken. Vul merk, model en bouwjaar dan zelf in. Wat je hier opslaat, blijft in deze testversie en gaat niet mee naar de echte app.'
+      )
+    );
+  } else if (!isStandalone() && !leesLokaal('tipVerborgen')) {
     tip = h(
       'div',
       { class: 'kaart tip' },
@@ -114,7 +125,10 @@ export async function toonTaxeren(root, { id, herlaad }) {
       opslaan.flush();
       toonRdw();
     } catch (e) {
-      foutVak.textContent = e?.message || 'Er ging iets mis bij het ophalen. Probeer het opnieuw.';
+      foutVak.textContent =
+        isPreview() && e?.soort === 'netwerk'
+          ? 'In deze testversie kan de app de RDW niet bereiken. Vul merk, model en bouwjaar hieronder zelf in. In de echte app werkt de kenteken-check wel.'
+          : e?.message || 'Er ging iets mis bij het ophalen. Probeer het opnieuw.';
       foutVak.hidden = false;
     } finally {
       checkKnop.disabled = false;
@@ -124,6 +138,7 @@ export async function toonTaxeren(root, { id, herlaad }) {
 
   function toonRdw() {
     const r = auto.rdw;
+    handmatigBlok.hidden = Boolean(r);
     if (!r) return leeg(rdwVak);
     const vandaag = new Date().toISOString().slice(0, 10);
     const apkVerlopen = Boolean(r.apkVervaldatum && r.apkVervaldatum < vandaag);
@@ -175,10 +190,45 @@ export async function toonTaxeren(root, { id, herlaad }) {
   );
 
   // ---------- auto ----------
+  const bouwjaarInput = h('input', {
+    type: 'text',
+    inputmode: 'numeric',
+    maxlength: '4',
+    autocomplete: 'off',
+    placeholder: 'bijv. 2019',
+    value: auto.bouwjaarHandmatig ?? '',
+  });
+  bouwjaarInput.addEventListener('input', () => {
+    const cijfers = bouwjaarInput.value.replace(/\D/g, '').slice(0, 4);
+    if (bouwjaarInput.value !== cijfers) bouwjaarInput.value = cijfers;
+    wijzig((a) => (a.bouwjaarHandmatig = cijfers.length === 4 ? Number(cijfers) : null));
+  });
+  const handmatigBlok = h(
+    'div',
+    { class: 'handmatig' },
+    h('p', { class: 'veld-hulp' }, 'Geen RDW-gegevens? Vul het dan zelf in.'),
+    h(
+      'div',
+      { class: 'rij-2 rij-breed-smal' },
+      veld(
+        'Merk en model',
+        h('input', {
+          type: 'text',
+          value: auto.merkModel ?? '',
+          placeholder: 'bijv. VW Golf',
+          autocomplete: 'off',
+          onInput: (e) => wijzig((a) => (a.merkModel = e.target.value)),
+        })
+      ),
+      veld('Bouwjaar', bouwjaarInput)
+    )
+  );
+
   const autoKaart = h(
     'section',
     { class: 'kaart' },
     h('h2', {}, 'Auto'),
+    handmatigBlok,
     veld('Kilometerstand', getalVeld({ waarde: auto.km, achtervoegsel: 'km', placeholder: '0', onWijzig: (v) => wijzig((a) => (a.km = v)) })),
     veld(
       'Uitvoering',
@@ -239,16 +289,20 @@ export async function toonTaxeren(root, { id, herlaad }) {
     autocapitalize: 'off',
     spellcheck: 'false',
   });
-  const openKnop = h('button', { type: 'button', class: 'knop knop-licht knop-klein', disabled: !auto.advertentieUrl }, icoon('extern'), 'Open');
+  // Een echte link (geen pop-up): werkt overal, ook in de testversie binnen Claude.
+  const openKnop = h('a', { class: 'knop knop-licht knop-klein', target: '_blank', rel: 'noopener noreferrer' }, icoon('extern'), 'Open');
+  const werkLinkBij = () => {
+    const url = auto.advertentieUrl;
+    const geldig = /^https?:\/\//i.test(url) ? url : url ? `https://${url}` : '';
+    if (geldig) openKnop.setAttribute('href', geldig);
+    else openKnop.removeAttribute('href');
+    openKnop.classList.toggle('uit', !geldig);
+    openKnop.setAttribute('aria-disabled', String(!geldig));
+  };
+  werkLinkBij();
   urlInput.addEventListener('input', () => {
     wijzig((a) => (a.advertentieUrl = urlInput.value.trim()));
-    openKnop.disabled = !auto.advertentieUrl;
-  });
-  openKnop.addEventListener('click', () => {
-    let url = auto.advertentieUrl;
-    if (!url) return;
-    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-    window.open(url, '_blank', 'noopener');
+    werkLinkBij();
   });
   const plakKnop = h('button', { type: 'button', class: 'knop knop-licht knop-klein' }, 'Plak');
   plakKnop.addEventListener('click', async () => {
@@ -531,7 +585,7 @@ export async function toonTaxeren(root, { id, herlaad }) {
     ? h(
         'section',
         { class: 'acties' },
-        h('a', { class: 'knop knop-groot', href: '#/archief' }, 'Klaar'),
+        h('a', { class: 'knop knop-groot', href: '#archief' }, 'Klaar'),
         h('p', { class: 'veld-hulp midden' }, 'Wijzigingen worden automatisch bewaard.'),
         h(
           'button',
@@ -548,7 +602,7 @@ export async function toonTaxeren(root, { id, herlaad }) {
               if (!ok) return;
               await verwijderAuto(auto.id);
               toast('Taxatie verwijderd');
-              location.hash = '#/archief';
+              location.hash = '#archief';
             },
           },
           icoon('prullenbak'),
@@ -564,14 +618,14 @@ export async function toonTaxeren(root, { id, herlaad }) {
             type: 'button',
             class: 'knop knop-groot',
             onClick: async () => {
-              if (!auto.kenteken) {
+              if (!auto.kenteken && !auto.merkModel) {
                 const ok = await bevestig({ titel: 'Opslaan zonder kenteken?', tekst: 'Je hebt nog geen kenteken ingevuld.', ja: 'Toch opslaan' });
                 if (!ok) return;
               }
               opslaan.flush();
               await zetInArchief(auto, instellingen);
               toast('Opgeslagen in archief');
-              location.hash = '#/archief';
+              location.hash = '#archief';
             },
           },
           'Opslaan in archief'

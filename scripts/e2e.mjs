@@ -181,7 +181,7 @@ try {
   stap('Smal scherm (iPhone SE)');
   const se = await browser.newContext({ ...devices['iPhone SE'] });
   const sePagina = await se.newPage();
-  await sePagina.goto(BASIS + '#/taxeren');
+  await sePagina.goto(BASIS + '#taxeren');
   await sePagina.getByRole('heading', { name: 'Taxeren', level: 1 }).waitFor();
   const breedte = await sePagina.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(breedte <= 375, `pagina is te breed: ${breedte}px`);

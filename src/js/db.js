@@ -54,6 +54,8 @@ export function leegAuto() {
     getaxeerdOp: null,
     kenteken: '',
     rdw: null,
+    merkModel: '', // zelf ingevuld als de RDW-check niet lukt
+    bouwjaarHandmatig: null,
     km: null,
     uitvoering: '',
     transmissie: null,
@@ -70,6 +72,16 @@ export function leegAuto() {
     bodHoog: null,
     bodLaag: null,
   };
+}
+
+/** "Toyota RAV4": uit de RDW, anders wat je zelf invulde. */
+export function naamVan(auto) {
+  const rdw = [auto.rdw?.merk, auto.rdw?.model].filter(Boolean).join(' ');
+  return rdw || (auto.merkModel ?? '').trim();
+}
+
+export function bouwjaarVan(auto) {
+  return auto.rdw?.bouwjaar ?? auto.bouwjaarHandmatig ?? null;
 }
 
 /** De taxatie waar je nu mee bezig bent (blijft bewaard als de app sluit). */

@@ -16,7 +16,7 @@ const SCHERMEN = { taxeren: toonTaxeren, archief: toonArchief, instellingen: too
 
 // ---------- onderbalk ----------
 const tabKnoppen = TABS.map((t) =>
-  h('a', { class: 'tab', href: `#/${t.key}`, 'data-tab': t.key }, icoon(t.icoon), h('span', {}, t.label))
+  h('a', { class: 'tab', href: `#${t.key}`, 'data-tab': t.key }, icoon(t.icoon), h('span', {}, t.label))
 );
 document.getElementById('tabbar').replaceChildren(...tabKnoppen);
 
@@ -24,9 +24,11 @@ document.getElementById('tabbar').replaceChildren(...tabKnoppen);
 let opruimen = null;
 let bezig = 0;
 
+// Adressen: #taxeren, #archief, #instellingen en #auto-<id> (een auto uit het archief).
 function leesRoute() {
-  const [scherm, id] = location.hash.replace(/^#\/?/, '').split('/');
-  return { scherm: SCHERMEN[scherm] ? scherm : 'taxeren', id: id ? decodeURIComponent(id) : null };
+  const deel = location.hash.replace(/^#\/?/, '');
+  if (deel.startsWith('auto-')) return { scherm: 'taxeren', id: decodeURIComponent(deel.slice(5)) };
+  return { scherm: SCHERMEN[deel] ? deel : 'taxeren', id: null };
 }
 
 async function toon() {
@@ -72,13 +74,12 @@ async function toon() {
 }
 
 window.addEventListener('hashchange', toon);
-if (!location.hash) history.replaceState(null, '', '#/taxeren');
 toon();
 
 // Tik op het actieve tabblad = terug naar boven.
 tabKnoppen.forEach((k) =>
   k.addEventListener('click', () => {
-    if (k.classList.contains('actief') && location.hash === `#/${k.dataset.tab}`) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (k.classList.contains('actief') && leesRoute().id === null) window.scrollTo({ top: 0, behavior: 'smooth' });
   })
 );
 
@@ -86,7 +87,7 @@ tabKnoppen.forEach((k) =>
 vraagBlijvendeOpslag();
 
 // ---------- offline & updates ----------
-if ('serviceWorker' in navigator && window.isSecureContext) {
+function startOffline() {
   // Alleen herladen als de gebruiker zelf op "bijwerken" tikt
   // (niet bij de allereerste installatie).
   let updateGevraagd = false;
@@ -130,6 +131,12 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
     updateGevraagd = false;
     location.reload();
   });
+}
+
+try {
+  if (!window.TAXATIE_PREVIEW && window.isSecureContext && 'serviceWorker' in navigator) startOffline();
+} catch (e) {
+  console.warn('Offline-ondersteuning niet beschikbaar:', e);
 }
 
 window.addEventListener('unhandledrejection', (e) => {

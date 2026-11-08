@@ -1,6 +1,6 @@
 // Scherm: Instellingen (marge, standaardbedragen schade, back-up).
 
-import { h, leeg, icoon, getalVeld, veld, toast, paneel, bevestig, vertraagd, isStandalone } from '../ui.js';
+import { h, leeg, icoon, getalVeld, veld, toast, paneel, bevestig, vertraagd, isStandalone, isPreview } from '../ui.js';
 import { leesInstellingen, schrijfInstellingen, opslagStatus, vraagBlijvendeOpslag } from '../db.js';
 import { SCHADE_TYPES, BACKUP_HERINNERING_DAGEN } from '../constants.js';
 import { formatDatumKort, dagenTussen } from '../format.js';
@@ -124,11 +124,15 @@ export async function toonInstellingen(root, { herlaad }) {
               type: 'button',
               class: 'knop',
               onClick: async () => {
-                const gelukt = await deelBackup(bestand);
-                if (gelukt) {
-                  sluit();
-                  toast('Back-up opgeslagen');
-                  tekenBackupStatus();
+                try {
+                  const gelukt = await deelBackup(bestand);
+                  if (gelukt) {
+                    sluit();
+                    toast('Back-up opgeslagen');
+                    tekenBackupStatus();
+                  }
+                } catch (e) {
+                  toast(e?.message || 'Opslaan is mislukt.', 'fout');
                 }
               },
             },
@@ -184,7 +188,7 @@ export async function toonInstellingen(root, { herlaad }) {
     const s = await opslagStatus();
     leeg(
       opslagVak,
-      h('div', { class: 'gegeven' }, h('dt', {}, 'Geïnstalleerd op beginscherm'), h('dd', {}, isStandalone() ? 'Ja' : 'Nee')),
+      isPreview() ? h('div', { class: 'gegeven' }, h('dt', {}, 'Omgeving'), h('dd', {}, 'Testversie in Claude')) : h('div', { class: 'gegeven' }, h('dt', {}, 'Geïnstalleerd op beginscherm'), h('dd', {}, isStandalone() ? 'Ja' : 'Nee')),
       h('div', { class: `gegeven ${s.blijvend === false ? 'rood' : ''}` }, h('dt', {}, 'Blijvende opslag'), h('dd', {}, s.blijvend === null ? 'Onbekend' : s.blijvend ? 'Aan' : 'Uit')),
       h('div', { class: 'gegeven' }, h('dt', {}, 'Gebruikte opslag'), h('dd', {}, formatGrootte(s.gebruikt))),
       h('div', { class: 'gegeven' }, h('dt', {}, 'Versie'), h('dd', {}, VERSIE))
@@ -202,7 +206,7 @@ export async function toonInstellingen(root, { herlaad }) {
     { class: 'kaart' },
     h('h2', {}, 'Opslag'),
     opslagVak,
-    persistKnop,
+    isPreview() ? null : persistKnop,
     h('p', { class: 'veld-hulp' }, 'Je gegevens gaan nooit naar internet. Alleen het opzoeken van een kenteken gebruikt internet (RDW).')
   );
 

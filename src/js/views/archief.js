@@ -1,7 +1,7 @@
 // Scherm: Archief (alle getaxeerde auto's).
 
 import { h, leeg, icoon, leesLokaal, schrijfLokaal } from '../ui.js';
-import { archief, haalFoto } from '../db.js';
+import { archief, haalFoto, naamVan, bouwjaarVan } from '../db.js';
 import { formatEuro, formatKm, formatDatumKort, dagenTussen } from '../format.js';
 import { formatKenteken, normaliseerKenteken } from '../kenteken.js';
 import { fotoUrl } from '../images.js';
@@ -37,7 +37,7 @@ function past(auto, zoek) {
   const z = zoek.toLowerCase().trim();
   const zKenteken = normaliseerKenteken(zoek);
   if (zKenteken && (auto.kenteken ?? '').includes(zKenteken)) return true;
-  const tekst = [auto.rdw?.merk, auto.rdw?.model, auto.uitvoering].filter(Boolean).join(' ').toLowerCase();
+  const tekst = [naamVan(auto), auto.uitvoering].filter(Boolean).join(' ').toLowerCase();
   return z.split(/\s+/).every((woord) => tekst.includes(woord));
 }
 
@@ -81,7 +81,7 @@ export async function toonArchief(root) {
   if (autos.length && (dagen === null || dagen > BACKUP_HERINNERING_DAGEN)) {
     backupSein = h(
       'a',
-      { class: 'melding rood link', href: '#/instellingen' },
+      { class: 'melding rood link', href: '#instellingen' },
       icoon('let_op', 'inline'),
       dagen === null ? ' Je hebt nog nooit een back-up gemaakt. ' : ` Laatste back-up is ${dagen} dagen geleden. `,
       h('strong', {}, 'Maak een back-up')
@@ -99,13 +99,13 @@ export async function toonArchief(root) {
         leeg(thumb, h('img', { src: url, alt: '', decoding: 'async' }));
       });
     }
-    const titel = [auto.rdw?.merk, auto.rdw?.model].filter(Boolean).join(' ') || 'Onbekende auto';
-    const regel = [auto.rdw?.bouwjaar, auto.km !== null && auto.km !== undefined ? formatKm(auto.km) : null, auto.uitvoering || null].filter(Boolean).join(' · ');
+    const titel = naamVan(auto) || 'Onbekende auto';
+    const regel = [bouwjaarVan(auto), auto.km !== null && auto.km !== undefined ? formatKm(auto.km) : null, auto.uitvoering || null].filter(Boolean).join(' · ');
     const bod = auto.bodHoog !== null && auto.bodHoog !== undefined ? `${formatEuro(auto.bodLaag)} – ${formatEuro(auto.bodHoog)}` : 'Geen bod';
 
     return h(
       'a',
-      { class: 'archief-item', href: `#/taxeren/${auto.id}` },
+      { class: 'archief-item', href: `#auto-${auto.id}` },
       thumb,
       h(
         'div',
@@ -129,7 +129,7 @@ export async function toonArchief(root) {
           icoon('archief', 'groot'),
           h('h2', {}, 'Nog geen taxaties'),
           h('p', {}, 'Taxeer een auto en tik op “Opslaan in archief”. Dan staat hij hier.'),
-          h('a', { class: 'knop', href: '#/taxeren' }, 'Naar taxeren')
+          h('a', { class: 'knop', href: '#taxeren' }, 'Naar taxeren')
         )
       );
       return;

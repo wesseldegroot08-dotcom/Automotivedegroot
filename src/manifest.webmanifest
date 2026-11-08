@@ -3,7 +3,7 @@
   "short_name": "Taxatie",
   "description": "Auto's taxeren: RDW-gegevens, schade en advies-bod.",
   "lang": "nl",
-  "start_url": "./#/taxeren",
+  "start_url": "./#taxeren",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

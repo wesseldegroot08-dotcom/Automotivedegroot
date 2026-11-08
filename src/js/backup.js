@@ -5,6 +5,16 @@ import { maakZip, leesZip, tekstUitBytes } from './zip.js';
 
 const FORMAAT = 1;
 
+// In de testversie binnen Claude mag de pagina zelf niets downloaden;
+// dan biedt Claude het bestand aan via de "downloads"-functie.
+const downloadsBelofte = (() => {
+  try {
+    return window.claude?.use ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+  } catch {
+    return Promise.resolve(null);
+  }
+})();
+
 function datumVoorBestandsnaam(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -49,6 +59,17 @@ export async function maakBackup() {
  * @returns {Promise<boolean>} true als het gelukt is
  */
 export async function deelBackup(bestand) {
+  const downloads = await downloadsBelofte;
+  if (downloads) {
+    try {
+      await downloads.save({ filename: bestand.name, data: bestand });
+      await markeerBackup();
+      return true;
+    } catch (e) {
+      if (e?.code === 'declined') return false;
+      throw new Error('Opslaan lukt hier niet. Probeer het in de echte app.');
+    }
+  }
   if (navigator.canShare?.({ files: [bestand] })) {
     try {
       await navigator.share({ files: [bestand], title: bestand.name });
