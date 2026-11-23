@@ -1,0 +1,17 @@
+{
+  "name": "Taxatie",
+  "short_name": "Taxatie",
+  "description": "Auto's taxeren: RDW-gegevens, schade en advies-bod.",
+  "lang": "nl",
+  "start_url": "./#taxeren",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f4f6",
+  "theme_color": "#f4f4f6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

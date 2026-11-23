@@ -1,0 +1,49 @@
+name: Testen en publiceren
+
+# Bij elke wijziging op main: tests draaien, app klaarmaken en op GitHub Pages zetten.
+# Bij een pull request: alleen testen.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publiceren-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        run: npm test
+      - name: App klaarmaken
+        run: npm run build
+      - name: Bestanden klaarzetten voor GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publiceren:
+    if: github.event_name != 'pull_request'
+    needs: bouwen
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Op GitHub Pages zetten
+        id: deployment
+        uses: actions/deploy-pages@v4

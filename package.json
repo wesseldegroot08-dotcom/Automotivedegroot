@@ -1,0 +1,12 @@
+{
+  "name": "taxatie-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Persoonlijke taxatie-app (PWA) voor de iPhone",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}
