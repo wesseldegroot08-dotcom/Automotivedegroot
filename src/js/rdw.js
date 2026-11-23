@@ -112,7 +112,13 @@ async function haalJson(url, fetchImpl, signal) {
     antwoord = await fetchImpl(url, { signal, headers: { Accept: 'application/json' } });
   } catch (e) {
     if (e?.name === 'AbortError') throw e;
-    throw new RdwFout('netwerk', 'Geen verbinding met de RDW. Controleer je internet en probeer het opnieuw.');
+    const offline = globalThis.navigator?.onLine === false;
+    throw new RdwFout(
+      'netwerk',
+      offline
+        ? 'Je hebt nu geen internet. Vul merk, model en bouwjaar zelf in, of probeer het later opnieuw.'
+        : 'De RDW is nu niet bereikbaar. Meestal is dat een storing bij de RDW. Probeer het later opnieuw, of vul merk, model en bouwjaar zelf in.'
+    );
   }
   if (!antwoord.ok) {
     throw new RdwFout('server', `De RDW gaf een fout terug (code ${antwoord.status}). Probeer het later opnieuw.`);

@@ -177,7 +177,10 @@ test('zoekKenteken: niet gevonden en geen internet', async () => {
   const offline = async () => {
     throw new TypeError('Load failed');
   };
-  await assert.rejects(zoekKenteken('XX-99-99', { fetchImpl: offline }), (e) => e instanceof RdwFout && e.soort === 'netwerk');
+  await assert.rejects(
+    zoekKenteken('XX-99-99', { fetchImpl: offline }),
+    (e) => e instanceof RdwFout && e.soort === 'netwerk' && /niet bereikbaar|geen internet/.test(e.message)
+  );
 });
 
 test('zip: schrijven en weer lezen geeft dezelfde inhoud', async () => {
