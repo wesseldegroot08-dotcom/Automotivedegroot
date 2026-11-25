@@ -84,6 +84,6 @@ Belangrijke keuzes:
 
 - [x] Mijlpaal 1: basis (login, logboek, regels als data, demodata, stamdata-schermen, start-scripts)
 - [x] Mijlpaal 2: voertuigen en regelmotor (trekker, chassis, voorkeuren, combinatiepagina, sjablonen, CSV, gewicht, aslast, chassis-fit, ADR, reefer, hoogte, verbodsdag)
-- [ ] Mijlpaal 3: planbord
+- [x] Mijlpaal 3: planbord (dag per trekker of chauffeur, slepen, toewijzen, alle regels per rit met uitleg, slots, LFD-kosten, rijtijd, override met reden, publiceren)
 - [ ] Mijlpaal 4: voorstellen (solver)
 - [ ] Mijlpaal 5: simulatoren en afronding

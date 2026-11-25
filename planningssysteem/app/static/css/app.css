@@ -100,3 +100,30 @@ tbody tr:nth-child(even) { background: #f6f8fa; }
 fieldset { border: 1px solid var(--rand); border-radius: 6px; margin: .8rem 0; }
 legend { font-weight: 700; padding: 0 .4rem; }
 details summary { cursor: pointer; }
+
+/* Planbord */
+.planbord-kop h1 { margin: 0; }
+.dagkeuze { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.actief { font-weight: 700; text-decoration: none; border-bottom: 3px solid var(--primair); }
+.tijdlijn { border: 1px solid var(--rand); background: #fff; border-radius: 6px; overflow-x: auto; }
+.tl-rij { display: flex; border-bottom: 1px solid #ccc; min-width: 900px; }
+.tl-label { width: 11rem; flex: none; padding: .4rem; font-weight: 600; font-size: .9rem; border-right: 1px solid #ccc; background: #f3f5f8; }
+.tl-baan { position: relative; flex: 1; min-height: 4.2rem;
+  background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(100%/18 - 1px), #e2e2e2 calc(100%/18 - 1px), #e2e2e2 calc(100%/18)); }
+.tl-baan.sleep-over { background-color: #e7f0fb; }
+.tl-kop .tl-baan { min-height: 1.8rem; background-image: none; }
+.tl-uur { position: absolute; top: .3rem; font-size: .75rem; transform: translateX(-50%); }
+.tl-blok { position: absolute; top: .3rem; bottom: .3rem; overflow: hidden; border-radius: 5px; border: 2px solid; padding: .1rem .3rem;
+  font-size: .78rem; line-height: 1.2; color: var(--tekst); text-decoration: none; background: #fff; cursor: grab; }
+.tl-blok.niveau-ok { border-color: var(--ok); background: var(--ok-licht); }
+.tl-blok.niveau-waarschuwing { border-color: var(--waarschuwing); background: var(--waarschuwing-licht); }
+.tl-blok.niveau-hard { border-color: var(--hard); background: var(--hard-licht); border-style: dashed; }
+.tl-blok.vast { box-shadow: inset 4px 0 0 #333; }
+.tl-sub { display: block; font-size: .7rem; white-space: nowrap; }
+.tl-icoon { margin-right: .15rem; }
+.twee-kolommen { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.kaartjes { list-style: none; padding: 0; }
+.kaartjes li { border: 1px solid #bbb; border-radius: 6px; padding: .5rem; margin-bottom: .5rem; background: #fff; }
+.sleepbaar { cursor: grab; }
+.rit-paneel { border-width: 3px; border-color: var(--primair); margin-top: 1rem; }
+button[disabled] { opacity: .5; cursor: not-allowed; }

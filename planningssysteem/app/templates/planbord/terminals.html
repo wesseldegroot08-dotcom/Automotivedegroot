@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titel %}Wachttijden{% endblock %}
+{% block inhoud %}
+<p><a href="/planbord">← Planbord</a></p>
+<h1>Gemeten wachttijden</h1>
+<p>Bij elke stop bewaren we de werkelijke aankomst, het vertrek en de wachttijd. Zo zie je later hoe lang een bezoek echt duurt.
+Met minder dan 5 metingen is de zekerheid laag.</p>
+<div class="tabel-wrap"><table>
+<thead><tr><th>Locatie</th><th>Soort</th><th>Standaard laad/lostijd</th><th>Gemiddelde wachttijd</th><th>Metingen</th><th>Zekerheid</th></tr></thead>
+<tbody>{% for l in locaties %}{% set s = stats.get(l.id) %}<tr><td>{{ l.naam }}</td><td>{{ l.type }}</td><td>{{ l.laad_los_min }} min{% if l.laad_los_is_aanname %} (aanname){% endif %}</td>
+<td>{% if s %}{{ s.gemiddeld_min }} min{% else %}—{% endif %}</td><td>{{ s.metingen if s else 0 }}</td><td>{{ s.zekerheid if s else 'geen data' }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

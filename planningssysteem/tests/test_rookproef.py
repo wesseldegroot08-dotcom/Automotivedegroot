@@ -4,7 +4,8 @@ from tests.conftest import inloggen
 
 PAGINAS = ["/", "/stamdata", "/voertuigen", "/voertuigen/combinatie", "/voertuigen/import",
            "/voertuigen/trekker/nieuw", "/voertuigen/chassis/nieuw", "/voertuigen/trekker/1",
-           "/voertuigen/chassis/1", "/logboek", "/instellingen"]
+           "/voertuigen/chassis/1", "/logboek", "/instellingen", "/planbord", "/planbord?per=chauffeur",
+           "/planbord?rit=1", "/planbord?rit=4", "/planbord/terminals", "/planbord?datum=2026-11-27"]
 
 
 def test_alle_hoofdpaginas_openen(client):

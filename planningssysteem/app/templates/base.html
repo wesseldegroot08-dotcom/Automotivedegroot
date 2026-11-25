@@ -18,6 +18,7 @@
       <a href="/">Start</a>
       {% block extra_nav %}{% endblock %}
       {% for link, tekst in nav_links|default([]) %}<a href="{{ link }}">{{ tekst }}</a>{% endfor %}
+      <a href="/planbord">Planbord</a>
       <a href="/voertuigen">Voertuigen</a>
       <a href="/stamdata">Stamdata en regels</a>
       <a href="/logboek">Logboek</a>

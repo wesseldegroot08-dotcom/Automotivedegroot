@@ -485,3 +485,38 @@ class Slot(Base, Tijdstempels):
     afwijzingscode: Mapped[str | None] = mapped_column(String(10))
 
     terminal = relationship("Locatie")
+
+
+# ---------------------------------------------------------------- mijlpaal 3: reistijden en overrides
+
+
+class Reistijd(Base):
+    """Vaste reistijd tussen twee locaties. De planner kan deze aanpassen."""
+
+    __tablename__ = "reistijd"
+    __table_args__ = (UniqueConstraint("van_locatie_id", "naar_locatie_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    van_locatie_id: Mapped[int] = mapped_column(ForeignKey("locatie.id"), nullable=False)
+    naar_locatie_id: Mapped[int] = mapped_column(ForeignKey("locatie.id"), nullable=False)
+    minuten: Mapped[int] = mapped_column(Integer, nullable=False)
+    km: Mapped[int] = mapped_column(Integer, nullable=False)
+    km_buitenland: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    land_buitenland: Mapped[str | None] = mapped_column(String(5))
+    is_aanname: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    bron: Mapped[str] = mapped_column(String(100), nullable=False, default="aanname")
+
+
+class Override(Base):
+    """De planner gaat bewust door ondanks een regel. Altijd met redencode en uitleg."""
+
+    __tablename__ = "override"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rit_id: Mapped[int] = mapped_column(ForeignKey("rit.id"), nullable=False)
+    regel_nr: Mapped[int] = mapped_column(Integer, nullable=False)
+    niveau: Mapped[str] = mapped_column(String(20), nullable=False)
+    uitleg_regel: Mapped[str] = mapped_column(Text, nullable=False)
+    reden_code: Mapped[str] = mapped_column(String(30), nullable=False)
+    reden: Mapped[str] = mapped_column(Text, nullable=False)
+    gebruiker: Mapped[str] = mapped_column(String(50), nullable=False)
+    tijd: Mapped[datetime] = mapped_column(UTCDatumTijd, default=nu_utc, nullable=False)
+    actief: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

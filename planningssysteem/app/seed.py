@@ -517,6 +517,24 @@ def vul(db: Session) -> None:
           opm="Reefer export")
     db.flush()
 
+    # ---------------------------------------------------------- reistijden (aanname, de planner kan ze aanpassen)
+    maasvlakte = [ect_delta, ect_euromax, apmt, rwg, depot_m]
+    vaste = [  # (locatie, minuten vanaf Maasvlakte, km)
+        (depot_w, 35, 35), (depot_b, 25, 22), (standplaats, 45, 48), (l_alfa, 85, 100), (l_bravo, 25, 23),
+        (l_charlie, 45, 50), (l_delta, 60, 68),
+    ]
+    for t in maasvlakte:
+        for loc, mins, km in vaste:
+            db.add(m.Reistijd(van_locatie_id=t.id, naar_locatie_id=loc.id, minuten=mins, km=km,
+                              bron="schatting demodata", is_aanname=True))
+        db.add(m.Reistijd(van_locatie_id=t.id, naar_locatie_id=l_echo.id, minuten=190, km=225, km_buitenland=95,
+                          land_buitenland="DE", bron="schatting demodata (Rotterdam-Duisburg ca. 220 km)",
+                          is_aanname=True))
+    for i, a in enumerate(maasvlakte):
+        for b in maasvlakte[i + 1:]:
+            db.add(m.Reistijd(van_locatie_id=a.id, naar_locatie_id=b.id, minuten=10, km=6, bron="schatting demodata"))
+    db.flush()
+
     # LFD morgen voor DEMO-1005
     c5 = o5.containers[0]
     vr5 = db.scalar(select(m.Vrijgave).where(m.Vrijgave.container_id == c5.id))
@@ -526,6 +544,24 @@ def vul(db: Session) -> None:
     db.add(m.Slot(terminal_id=ect_euromax.id, handlingtype="ophalen", slot_van=nl_tijd(morgen, 6),
                   slot_tot=nl_tijd(morgen, 8), label=f"PN-{o7.klantreferentie}", status="Toegekend",
                   tar="TAR-DEMO-7"))
+    db.flush()
+
+    # ---------------------------------------------------------- ritten (één per order) en twee vooraf geplande ritten
+    from app.planner.context import laad_dag
+    from app.planner.ritten import maak_rit_voor_order, plan_rit
+
+    orders = list(db.scalars(select(m.Order).order_by(m.Order.id)))
+    ritten = {o.klantreferentie: maak_rit_voor_order(db, o) for o in orders}
+    db.flush()
+    slot7 = db.scalar(select(m.Slot).where(m.Slot.label == f"PN-{o7.klantreferentie}"))
+    slot7.rit_id = ritten["DEMO-1007"].id
+    ctx = laad_dag(db, morgen)
+    rit4 = next(r for r in ctx.ritten if r.order.klantreferentie == "DEMO-1004")
+    plan_rit(ctx, rit4, nl_tijd(morgen, 6, 0), t15.id, c207.id, celine.id)
+    rit4.vastheid = "toegezegd"
+    rit21 = next(r for r in ctx.ritten if r.order.klantreferentie == "DEMO-1021")
+    plan_rit(ctx, rit21, nl_tijd(morgen, 7, 0), t14.id, c209.id, esra.id)
+    rit21.vastheid = "toegezegd"
     db.flush()
     _ = (t11, t12, t13, t14, t15, c201, c202, c204, c205, c206, c207, c208, c209, bas, celine, esra, gijs, hamza,
          ect_delta, depot_m, l_echo)
