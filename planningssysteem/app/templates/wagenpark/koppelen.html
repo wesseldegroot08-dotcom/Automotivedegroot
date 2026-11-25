@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titel %}Wagenpark{% endblock %}
+{% block inhoud %}
+<h1>Wagenpark</h1>
+{% set tab = 'koppelen' %}{% include "wagenpark/_tabs.html" %}
+{% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+<p>Elke chauffeur rijdt een <strong>eigen trekker</strong> met de <strong>trailer</strong> die eraan hangt. Plan je een rit op een chauffeur, dan gaan trekker en trailer vanzelf mee.</p>
+
+<section class="kaart">
+<h2 style="margin-top:0">Wie rijdt wat</h2>
+<div class="tabel-wrap"><table>
+<thead><tr><th>Chauffeur</th><th>Eigen trekker</th><th>Trailer</th><th></th></tr></thead>
+<tbody>
+{% for c in chauffeurs %}{% set t = per_trekker.get(c.voorkeur_trekker_id) %}
+<tr>
+  <td><strong>{{ c.pseudoniem }}</strong></td>
+  <td><label class="verborgen" for="t-{{ c.id }}">Trekker van {{ c.pseudoniem }}</label>
+    <select id="t-{{ c.id }}" name="trekker_id" form="k-{{ c.id }}"><option value="">— geen —</option>
+    {% for x in trekkers %}<option value="{{ x.id }}" {% if t and x.id == t.id %}selected{% endif %}>Trekker {{ x.intern_nummer }} ({{ x.kenteken }}){% if x.status != 'actief' %} – {{ x.status }}{% endif %}</option>{% endfor %}</select></td>
+  <td><label class="verborgen" for="c-{{ c.id }}">Trailer van {{ c.pseudoniem }}</label>
+    <select id="c-{{ c.id }}" name="trailer_id" form="k-{{ c.id }}"><option value="">— geen —</option>
+    {% for x in trailers %}<option value="{{ x.id }}" {% if t and x.id == t.vaste_chassis_id %}selected{% endif %}>{{ x.nummer }} ({{ x.type }}){% if x.status != 'actief' %} – {{ x.status }}{% endif %}</option>{% endfor %}</select></td>
+  <td><form id="k-{{ c.id }}" method="post" action="/wagenpark/koppelen/{{ c.id }}"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><button class="knop knop-klein">Opslaan</button></form></td>
+</tr>
+{% endfor %}
+</tbody></table></div>
+{% if los_trekkers %}<p class="hulp">Trekkers zonder chauffeur: {% for t in los_trekkers %}{{ t.intern_nummer }}{% if t.status != 'actief' %} ({{ t.status }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+{% if los_trailers %}<p class="hulp">Losse trailers: {% for c in los_trailers %}{{ c.nummer }} ({{ c.type }}){% if not loop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+<div class="knoppen"><a class="knop knop-tweede" href="/voertuigen/chassis/nieuw">+ Nieuwe trailer</a><a class="knop knop-tweede" href="/voertuigen/trekker/nieuw">+ Nieuwe trekker</a></div>
+</section>
+
+<section class="kaart">
+<h2 style="margin-top:0">Andere trekker voor één dag</h2>
+<p class="hulp">Bijvoorbeeld als een trekker in de werkplaats staat. De vaste koppeling blijft bewaard.</p>
+<form method="post" action="/wagenpark/inzet" class="rij-formulier"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  <label>Chauffeur<select name="chauffeur_id">{% for c in chauffeurs %}<option value="{{ c.id }}">{{ c.pseudoniem }}</option>{% endfor %}</select></label>
+  <label>Datum<input type="date" name="datum" value="{{ morgen }}"></label>
+  <label>Trekker<select name="trekker_id">{% for x in trekkers %}<option value="{{ x.id }}">Trekker {{ x.intern_nummer }}</option>{% endfor %}</select></label>
+  <button class="knop">Opslaan</button>
+</form>
+{% if inzet %}<ul>{% for i in inzet %}<li>{{ i.datum.strftime('%d-%m') }}: {{ i.chauffeur.pseudoniem }} rijdt trekker {{ i.trekker.intern_nummer }}
+  <form method="post" action="/wagenpark/inzet/{{ i.id }}/weg" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><button class="link-knop">verwijderen</button></form></li>{% endfor %}</ul>{% endif %}
+</section>
+{% endblock %}

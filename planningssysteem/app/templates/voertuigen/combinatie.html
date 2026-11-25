@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titel %}Combinatie doorrekenen{% endblock %}
+{% block inhoud %}
+<p><a href="/voertuigen">← Voertuigen</a></p>
+<h1>Combinatie doorrekenen</h1>
+<p>Kies een trekker, een trailer en een of twee containers. Je ziet meteen het gewicht per grens en welke regels falen.</p>
+<form method="get" action="/voertuigen/combinatie" class="kaart" hx-get="/voertuigen/combinatie" hx-target="#resultaat" hx-trigger="change delay:300ms, submit" hx-push-url="true">
+  <div class="filters">
+    <div><label for="trekker_id">Trekker</label><select id="trekker_id" name="trekker_id"><option value="">— kies —</option>
+      {% for t in trekkers %}<option value="{{ t.id }}" {% if keuze.trekker_id == t.id %}selected{% endif %}>{{ t.intern_nummer }} · {{ t.kenteken }} · {{ t.aandrijving }}</option>{% endfor %}</select></div>
+    <div><label for="chassis_id">Trailer</label><select id="chassis_id" name="chassis_id"><option value="">— kies —</option>
+      {% for c in chassis_lijst %}<option value="{{ c.id }}" {% if keuze.chassis_id == c.id %}selected{% endif %}>{{ c.nummer }} · {{ c.type }} · {{ c.assen }} assen</option>{% endfor %}</select></div>
+    <div><label for="route">Route (bepaalt de grens)</label><select id="route" name="route">
+      {% for r, tekst in [('NL','Nederland algemeen (50 t)'),('NL-intermodaal','Intermodaal (44 t of 42 t)'),('DE','Duitsland (40 t)'),('DE-intermodaal','Duitsland intermodaal'),('BE','België (Open)')] %}
+      <option value="{{ r }}" {% if keuze.route == r %}selected{% endif %}>{{ tekst }}</option>{% endfor %}</select></div>
+    <div><label for="chauffeur_id">Chauffeur (voor ADR, optioneel)</label><select id="chauffeur_id" name="chauffeur_id"><option value="">— geen —</option>
+      {% for c in chauffeurs %}<option value="{{ c.id }}" {% if keuze.chauffeur_id == c.id %}selected{% endif %}>{{ c.pseudoniem }}</option>{% endfor %}</select></div>
+  </div>
+  {% for i in [1, 2] %}{% set c = keuze.containers[i-1] if keuze.containers|length >= i else {} %}
+  <fieldset class="container-keuze"><legend>Container {{ i }}{% if i == 2 %} (alleen bij twee 20ft){% endif %}</legend>
+    <div class="filters">
+      <div><label for="c{{i}}_maat">Maat</label><select id="c{{i}}_maat" name="c{{i}}_maat"><option value="">— geen —</option>
+        {% for mt in maten %}<option value="{{ mt }}" {% if c.maat == mt %}selected{% endif %}>{{ mt }}ft</option>{% endfor %}</select></div>
+      <div><label for="c{{i}}_type">Type</label><select id="c{{i}}_type" name="c{{i}}_type">
+        {% for tp in types %}<option value="{{ tp }}" {% if c.type == tp %}selected{% endif %}>{{ tp }}</option>{% endfor %}</select></div>
+      <div><label for="c{{i}}_gewicht">Gewicht (kg)</label><input id="c{{i}}_gewicht" name="c{{i}}_gewicht" inputmode="numeric" value="{{ c.gewicht or '' }}"></div>
+      <div><label for="c{{i}}_soort">Dit gewicht is</label><select id="c{{i}}_soort" name="c{{i}}_soort">
+        <option value="vgm" {% if c.soort != 'lading' %}selected{% endif %}>VGM (bruto: lading + lege container)</option>
+        <option value="lading" {% if c.soort == 'lading' %}selected{% endif %}>alleen de lading</option></select></div>
+      <div><label for="c{{i}}_tarra">Lege container (kg, leeg = richtwaarde)</label><input id="c{{i}}_tarra" name="c{{i}}_tarra" inputmode="numeric" value="{{ c.tarra or '' }}"></div>
+      <div><label for="c{{i}}_imo">IMO-klasse (ADR, optioneel)</label><input id="c{{i}}_imo" name="c{{i}}_imo" value="{{ c.imo or '' }}"></div>
+    </div>
+  </fieldset>
+  {% endfor %}
+  <button class="knop" type="submit">Doorrekenen</button>
+</form>
+<div id="resultaat" aria-live="polite">{% include "voertuigen/_combinatie_resultaat.html" %}</div>
+{% endblock %}

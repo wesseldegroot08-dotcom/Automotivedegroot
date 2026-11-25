@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titel %}Orders{% endblock %}
+{% block inhoud %}
+<div class="dagkop"><h1>Orders · {{ datum|dag_nl }}</h1>
+  <div class="knoppen"><a class="knop" href="/orders/inlezen">✉ Order inlezen</a><a class="knop knop-tweede" href="/stamdata/orders/nieuw">+ Order met de hand</a></div></div>
+<form method="get" class="rij-formulier"><label>Dag <input type="date" name="datum" value="{{ datum }}"></label><button class="knop knop-tweede">Toon</button></form>
+<div class="tabel-wrap" style="margin-top:1rem"><table>
+<thead><tr><th>Order</th><th>Klant</th><th>Wat</th><th>Tijd klant</th><th>Chauffeur</th><th>Stand</th></tr></thead>
+<tbody>{% for r in ritten %}<tr>
+  <td><a href="/planbord?datum={{ datum }}&rit={{ r.id }}">{{ r.order.klantreferentie }}</a></td>
+  <td>{{ r.order.klant.naam|replace(' (demo)', '') }}</td>
+  <td>{{ {'import': 'Ophalen', 'export': 'Brengen', 'leeg': 'Leeg terug'}.get(r.order.type, r.order.type) }}: {{ r.van_locatie.naam|replace(' (demo)', '') }} → {{ r.naar_locatie.naam|replace(' (demo)', '') }}</td>
+  <td>{{ r.order.venster_van|uur_nl }}–{{ r.order.venster_tot|uur_nl }}</td>
+  <td>{{ r.chauffeur.pseudoniem if r.chauffeur else '—' }}</td>
+  <td>{% if r.gepubliceerd %}✔ Verstuurd{% elif r.chauffeur_id %}Gepland{% else %}Nog niet gepland{% endif %}</td>
+</tr>{% else %}<tr><td colspan="6">Geen orders op deze dag.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_status.html" import regelstatus %}
+{% block titel %}{{ e.titel }}{% endblock %}
+{% block inhoud %}
+{% if e.slug == 'chauffeurs' %}<h1>Wagenpark</h1>{% set tab = 'chauffeurs' %}{% include "wagenpark/_tabs.html" %}
+{% else %}<p><a href="/beheer">← Beheer</a> · <a href="/stamdata">Stamdata en regels</a></p>
+<h1>{{ e.titel }}</h1>{% endif %}
+{% if e.uitleg %}<p>{{ e.uitleg }}</p>{% endif %}
+{% if request.query_params.get('opgeslagen') %}<p class="melding melding-ok" role="status">✔ Opgeslagen. De wijziging staat in het logboek.</p>{% endif %}
+<div class="balk">
+  <a class="knop" href="/stamdata/{{ e.slug }}/nieuw">+ Nieuw</a>
+  <form method="get" class="zoek">
+    <label for="q">Zoeken</label>
+    <input id="q" name="q" value="{{ q }}">
+    {% if e.archief_veld %}
+    <label class="vinkje"><input type="checkbox" name="archief" value="1" {% if archief %}checked{% endif %}> Ook gearchiveerd</label>
+    {% endif %}
+    <button class="knop knop-tweede" type="submit">Zoek</button>
+  </form>
+</div>
+<div class="tabel-wrap">
+<table>
+  <thead><tr>{% for k in kolommen %}<th scope="col">{{ k.label }}</th>{% endfor %}<th scope="col">Actie</th></tr></thead>
+  <tbody>
+  {% for obj, cellen in tabel %}
+    <tr>
+      {% for k in kolommen %}
+      <td>{% if k.naam == 'status' and cellen[loop.index0] in ['bevestigd','schatting','open'] %}{{ regelstatus(cellen[loop.index0]) }}{% else %}{{ cellen[loop.index0] }}{% endif %}</td>
+      {% endfor %}
+      <td><a href="/stamdata/{{ e.slug }}/{{ obj.id }}">Bewerken</a>
+        {% if e.archief_veld and ((e.archief_veld == 'actief' and not obj.actief) or (e.archief_veld == 'gearchiveerd' and obj.gearchiveerd)) %} <span class="badge">Gearchiveerd</span>{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="{{ kolommen|length + 1 }}">Nog niets gevonden.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

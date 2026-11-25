@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titel %}Mijn ritten{% endblock %}
+{% block inhoud %}
+<div class="chauffeur">
+<h1>Mijn ritten{% if chauffeur %} — {{ chauffeur.pseudoniem }}{% endif %}</h1>
+{% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+<p class="hulp">Druk op de knop als het gebeurt. Het systeem bewaart de tijd. Er is geen GPS.</p>
+{% if not chauffeur %}<p>Je account is niet gekoppeld aan een chauffeur. Vraag de planner.</p>{% endif %}
+{% for r in ritten %}
+<section class="kaart chauffeur-rit">
+  <h2>{{ r.gepland_start|tijd_nl }} — {{ r.order.klantreferentie }}</h2>
+  <p><strong>Status:</strong> {{ r.status }}</p>
+  <ol class="stops">{% for s in r.stops %}
+    <li><strong>{{ s.locatie.naam }}</strong> ({{ s.type }}), gepland {{ s.gepland_aankomst|uur_nl }}
+      {% if s.werkelijk_aankomst %}<br>✔ aangekomen {{ s.werkelijk_aankomst|uur_nl }}{% endif %}
+      {% if s.werkelijk_vertrek %}<br>✔ weg {{ s.werkelijk_vertrek|uur_nl }} ({{ s.wachttijd_min }} min daar){% endif %}</li>
+  {% endfor %}</ol>
+  <p>Container: {% for c in r.order.containers %}<strong>{{ c.nummer }}</strong> ({{ c.maat }} {{ c.type }}){% if not loop.last %}, {% endif %}{% endfor %}<br>
+  Trekker {{ r.trekker.intern_nummer if r.trekker else '-' }}, trailer {{ r.chassis.nummer if r.chassis else '-' }}<br>
+  {% for s in slots[r.id] %}Slot {{ s.terminal.naam }}: {{ s.slot_van|uur_nl }}-{{ s.slot_tot|uur_nl }}{% if s.tar %}, TAR {{ s.tar }}{% endif %}<br>{% endfor %}</p>
+  <div class="grote-knoppen">
+  {% for actie, tekst in knoppen[r.id] %}
+    <form method="post" action="/chauffeur/rit/{{ r.id }}/{{ actie }}"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+      <button class="knop knop-groot">{{ tekst }}</button></form>
+  {% endfor %}
+  </div>
+</section>
+{% else %}{% if chauffeur %}<p>Je hebt vandaag en morgen geen gepubliceerde ritten.</p>{% endif %}
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}Planning{% endblock %} · {{ bedrijf }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token(request) }}"}'>
+<a class="naar-inhoud" href="#inhoud">Naar de inhoud</a>
+{% set rol = request.session.get('rol') %}
+{% set pad = request.url.path %}
+{% macro item(link, icoon, tekst, actief) %}<a href="{{ link }}" {% if actief %}class="actief" aria-current="page"{% endif %}><span class="icoon" aria-hidden="true">{{ icoon }}</span>{{ tekst }}</a>{% endmacro %}
+<div class="{{ 'app' if request.session.get('gebruiker_id') else 'zonder-menu' }}">
+  {% if request.session.get('gebruiker_id') %}
+  <header class="zijbalk">
+    <a class="merk" href="/"><span class="merk-logo" aria-hidden="true">DG</span><span>{{ bedrijf }}<small>Planning <span class="label-test">TEST</span></small></span></a>
+    <nav class="menu" aria-label="Hoofdmenu">
+      {% if rol in ['planner', 'admin'] %}
+      {{ item('/', '☀', 'Morgen', pad == '/') }}
+      {{ item('/planbord', '▦', 'Planbord', pad.startswith('/planbord')) }}
+      {{ item('/orders', '📦', 'Orders', pad.startswith('/orders')) }}
+      {{ item('/wagenpark', '🚚', 'Wagenpark', pad.startswith('/wagenpark') or pad.startswith('/voertuigen')) }}
+      {{ item('/beheer', '⚙', 'Beheer', pad.startswith('/beheer') or pad.startswith('/stamdata') or pad.startswith('/logboek') or pad.startswith('/instellingen') or pad.startswith('/voorstellen') or pad.startswith('/facturen') or pad.startswith('/export')) }}
+      {% else %}
+      {{ item('/chauffeur', '🚚', 'Mijn ritten', True) }}
+      {% endif %}
+    </nav>
+    <form method="post" action="/logout" class="zijbalk-voet">
+      <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+      <div>{{ request.session.get('gebruikersnaam') }} · {{ rol }}</div>
+      <button type="submit" class="knop knop-klein">Uitloggen</button>
+    </form>
+  </header>
+  {% endif %}
+  <main id="inhoud">
+    {% block inhoud %}{% endblock %}
+    <footer class="voet" role="note">Testversie met verzonnen data. Jij blijft eindverantwoordelijk. De tachograaf is de wettelijke waarheid.</footer>
+  </main>
+</div>
+</body>
+</html>

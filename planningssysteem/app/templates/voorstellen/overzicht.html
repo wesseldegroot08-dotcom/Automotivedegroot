@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titel %}Voorstellen{% endblock %}
+{% block inhoud %}
+<h1>Voorstellen voor {{ datum.strftime('%d-%m-%Y') }}</h1>
+{% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+<p>Het systeem doet een voorstel. <strong>Jij beslist</strong>: goedkeuren, aanpassen op het planbord, of afkeuren.
+Toegezegde en gestarte ritten schuiven niet mee.</p>
+<form method="get" action="/voorstellen" class="rij-formulier">
+  <label>Dag <input type="date" name="datum" value="{{ datum }}"></label> <button class="knop knop-tweede">Toon</button>
+</form>
+{% if noodstop %}
+<p class="melding melding-hard" role="alert">⛔ <strong>Noodstop staat aan.</strong> Voorstellen zijn uit. Het planbord werkt gewoon.</p>
+{% else %}
+<form method="post" action="/voorstellen/maken">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+  <button class="knop">Maak voorstel voor {{ datum.strftime('%d-%m-%Y') }}</button>
+</form>
+{% endif %}
+{% if jobs %}<h2>Bezig of mislukt</h2><ul>{% for j in jobs %}<li>Taak {{ j.id }}: {{ j.status }}{% if j.fout %} — {{ j.fout.splitlines()[0] }}{% endif %} <a href="/voorstellen/job/{{ j.id }}">bekijk</a></li>{% endfor %}</ul>{% endif %}
+<h2>Eerdere voorstellen</h2>
+{% if voorstellen %}
+<div class="tabel-wrap"><table>
+<thead><tr><th>Nr</th><th>Gemaakt</th><th>Door</th><th>Status</th><th>Ingepland</th><th>Niet gepland</th><th>Lege km</th><th>Exacte controle</th></tr></thead>
+<tbody>{% for v in voorstellen %}<tr>
+<td><a href="/voorstellen/{{ v.id }}">Voorstel {{ v.id }}</a></td><td>{{ v.aangemaakt|tijd_nl }}</td><td>{{ v.aangemaakt_door }}</td><td>{{ v.status }}</td>
+<td>{{ v.ingepland }}</td><td>{{ v.ongepland }}</td><td>{{ v.lege_km }}</td>
+<td>{% if v.exact_ok %}<span class="badge badge-ok">✔ OK</span>{% else %}<span class="badge badge-hard">⛔ Afgekeurd</span>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p>Nog geen voorstellen voor deze dag.</p>{% endif %}
+{% endblock %}

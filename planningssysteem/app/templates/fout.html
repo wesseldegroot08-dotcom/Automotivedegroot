@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titel %}Er ging iets mis{% endblock %}
+{% block inhoud %}
+<section class="kaart">
+  <h1>Er ging iets mis ({{ code }})</h1>
+  <p class="melding melding-hard">⛔ {{ melding }}</p>
+  <p><a href="javascript:history.back()">Ga terug</a> of <a href="/">naar de startpagina</a>.</p>
+</section>
+{% endblock %}

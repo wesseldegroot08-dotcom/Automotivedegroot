@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titel %}Stamdata en regels{% endblock %}
+{% block inhoud %}
+<h1>Stamdata en regels</h1>
+<p>Kies wat je wilt bekijken of aanpassen. Je kunt niets echt verwijderen: je kunt het alleen archiveren.
+Zo blijft de geschiedenis bewaard.</p>
+{% for groep, lijst in groepen.items() %}
+<h2>{{ groep }}</h2>
+<ul class="tegel-lijst">
+  {% for e in lijst %}<li><a class="tegel-link" href="/stamdata/{{ e.slug }}">{{ e.titel }}</a></li>{% endfor %}
+</ul>
+{% endfor %}
+{% endblock %}

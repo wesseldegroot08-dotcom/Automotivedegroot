@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titel %}Order controleren{% endblock %}
+{% macro sel(naam, label, lijst, waarde, tekst='naam') %}
+<label for="f-{{ naam }}">{{ label }}</label>
+<select id="f-{{ naam }}" name="{{ naam }}"><option value="">— kies —</option>
+{% for x in lijst %}{% set id = x.id|string if x.id is defined else x %}<option value="{{ id }}" {% if id == waarde %}selected{% endif %}>{{ x[tekst] if x.id is defined else x }}</option>{% endfor %}
+</select>
+{% endmacro %}
+{% block inhoud %}
+<p><a href="/orders/inlezen">← Order inlezen</a></p>
+<h1>Order controleren <span class="badge">{{ c.status }}</span></h1>
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+{% set fouten = meldingen|selectattr('soort', 'equalto', 'fout')|list %}
+{% set twijfel = meldingen|selectattr('soort', 'equalto', 'twijfel')|list %}
+{% if fouten %}<div class="melding melding-hard"><strong>⛔ Dit moet eerst kloppen:</strong><ul>{% for x in fouten %}<li>{{ x.tekst }}</li>{% endfor %}</ul></div>{% endif %}
+{% if twijfel %}<div class="melding melding-waarschuwing"><strong>⚠ Kijk hier goed naar:</strong><ul>{% for x in twijfel %}<li>{{ x.tekst }}</li>{% endfor %}</ul></div>{% endif %}
+{% if not meldingen %}<p class="melding melding-ok">✔ Alles gevonden en de controles kloppen. Kijk het toch even na.</p>{% endif %}
+<div class="twee-kolommen">
+<form method="post" action="/orders/concept/{{ c.id }}" class="kaart">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  {{ sel('klant_id', 'Klant', klanten, v.get('klant_id', '')) }}
+  <label for="f-ref">Referentie van de klant</label><input id="f-ref" name="klantreferentie" value="{{ v.get('klantreferentie', '') }}">
+  {{ sel('type', 'Soort order', ordertypes, v.get('type', '')) }}
+  <label for="f-bl">Boeking of B/L</label><input id="f-bl" name="boeking_bl" value="{{ v.get('boeking_bl', '') }}">
+  {{ sel('terminal_id', 'Terminal of depot', terminals, v.get('terminal_id', '')) }}
+  {{ sel('klantlocatie_id', 'Adres klant', klantlocaties, v.get('klantlocatie_id', '')) }}
+  <label for="f-datum">Datum</label><input id="f-datum" type="date" name="datum" value="{{ v.get('datum', '') }}">
+  <label for="f-van">Tijd vanaf</label><input id="f-van" type="time" name="venster_van" value="{{ v.get('venster_van', '') }}">
+  <label for="f-tot">Tijd tot</label><input id="f-tot" type="time" name="venster_tot" value="{{ v.get('venster_tot', '') }}">
+  <label for="f-nr">Containernummer</label><input id="f-nr" name="containernummer" value="{{ v.get('containernummer', '') }}">
+  {{ sel('maat', 'Maat (ft)', maten, v.get('maat', '')) }}
+  {{ sel('container_type', 'Type', types, v.get('container_type', '')) }}
+  <label for="f-kg">Gewicht VGM (kg)</label><input id="f-kg" name="vgm_kg" inputmode="numeric" value="{{ v.get('vgm_kg', '') }}">
+  {{ sel('rederij_id', 'Rederij', rederijen, v.get('rederij_id', '')) }}
+  {% if c.status not in ('Goedgekeurd', 'Afgekeurd') %}
+  <div class="knoppen">
+    <button class="knop" name="actie" value="goedkeuren">✔ Keur goed en maak order</button>
+    <button class="knop knop-tweede" name="actie" value="opslaan">Opslaan en opnieuw controleren</button>
+    <button class="knop knop-tweede" name="actie" value="afkeuren">Afkeuren</button>
+  </div>
+  {% elif c.order_id %}<p>✔ Order aangemaakt.</p>{% endif %}
+</form>
+<section class="kaart"><h2>Originele tekst</h2><pre class="brontekst">{{ c.bron_tekst }}</pre>
+<p class="hulp">Uitgelezen door: {{ c.uitlezer }} (vaste regels, geen taalmodel).</p></section>
+</div>
+{% endblock %}

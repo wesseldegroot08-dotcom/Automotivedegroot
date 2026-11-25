@@ -1,0 +1,14 @@
+{# Kleine bouwstenen. Nooit alleen kleur: altijd tekst of icoon erbij. #}
+{% macro regelstatus(s) -%}
+{%- if s == 'bevestigd' %}<span class="badge badge-ok">✔ Bevestigd</span>
+{%- elif s == 'schatting' %}<span class="badge badge-schatting">≈ Schatting</span>
+{%- elif s == 'open' %}<span class="badge badge-open">? Open</span>
+{%- else %}{{ s }}{% endif -%}
+{%- endmacro %}
+{% macro aanname() -%}<span class="badge badge-aanname">⚑ Aanname</span>{%- endmacro %}
+{% macro uitslag(niveau) -%}
+{%- if niveau == 'ok' %}<span class="badge badge-ok">✔ OK</span>
+{%- elif niveau == 'waarschuwing' %}<span class="badge badge-schatting">⚠ Waarschuwing</span>
+{%- elif niveau == 'hard' %}<span class="badge badge-hard">⛔ Hard: niet toegestaan</span>
+{%- else %}{{ niveau }}{% endif -%}
+{%- endmacro %}

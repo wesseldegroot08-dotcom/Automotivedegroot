@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titel %}Factuurconcept{% endblock %}
+{% block inhoud %}
+<h1>Factuurconcept {{ datum.strftime('%d-%m-%Y') }}</h1>
+<p class="melding melding-waarschuwing" role="note">⚠ Dit is een <strong>concept</strong> op basis van verzonnen demotarieven. Er wordt niets verstuurd en er is geen koppeling met een boekhoudpakket.</p>
+<form method="get" action="/facturen" class="rij-formulier"><label>Dag <input type="date" name="datum" value="{{ datum }}"></label> <button class="knop knop-tweede">Toon</button>
+  <a class="knop" href="/facturen.csv?datum={{ datum }}">Download CSV</a></form>
+{% for f in concepten %}
+<section class="kaart">
+  <h2>{{ f.order.klantreferentie }} — {{ f.order.klant.naam }}</h2>
+  <table><tbody>{% for r in f.regels %}<tr><td>{{ r.omschrijving }}</td><td class="rechts">{{ r.bedrag_cent|geld }}</td></tr>{% endfor %}
+  <tr><th>Totaal (excl. BTW)</th><th class="rechts">{{ f.totaal_cent|geld }}</th></tr></tbody></table>
+  {% if f.opmerkingen %}<ul class="hulp">{% for o in f.opmerkingen %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
+</section>
+{% else %}<p>Geen ingeplande orders op deze dag.</p>{% endfor %}
+<p><strong>Totaal alle concepten: {{ totaal|geld }}</strong> (excl. BTW)</p>
+{% endblock %}

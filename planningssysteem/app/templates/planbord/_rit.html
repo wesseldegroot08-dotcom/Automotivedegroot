@@ -1,0 +1,114 @@
+{% from "_status.html" import uitslag, regelstatus, aanname %}
+{% set rit = p.rit %}{% set t = p.toets %}
+<div class="paneel-kop">
+  <h2 id="h-rit" style="margin:0">{{ p.klant }} <span class="zacht">· {{ rit.order.klantreferentie }}</span></h2>
+  <a class="knop knop-tweede knop-klein" href="/planbord?datum={{ p.datum }}">Sluiten</a>
+</div>
+
+<dl class="feiten">
+  <dt>Wat</dt><dd>{{ {'import': 'Volle container ophalen bij de terminal', 'export': 'Volle container naar de terminal brengen', 'leeg': 'Lege container terugbrengen'}.get(rit.order.type, rit.order.type) }}</dd>
+  <dt>Ophalen</dt><dd>{{ rit.van_locatie.naam }}</dd>
+  <dt>Afleveren</dt><dd>{{ rit.naar_locatie.naam }}</dd>
+  <dt>Klant wil</dt><dd>tussen {{ rit.order.venster_van|uur_nl }} en {{ rit.order.venster_tot|uur_nl }}</dd>
+  <dt>Container</dt><dd>{% for c in rit.order.containers %}{{ c.nummer }} · {{ c.maat }} ft · {{ (c.vgm_kg / 1000)|round(1) }} ton{% if c.imo_klasse %} · gevaarlijke stoffen{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>
+  <dt>Duurt</dt><dd>ongeveer {{ p.duur.totaal_min|minuten }}</dd>
+  {% if rit.gepubliceerd %}<dt>Chauffeur</dt><dd>✓ Verstuurd</dd>{% endif %}
+</dl>
+
+{% if p.plan %}<p class="melding">In het automatische plan: <strong>{{ p.plan.chauffeur.pseudoniem }}</strong> om <strong>{{ p.plan.start|uur_nl }}</strong>. Dit geldt na jouw akkoord. Hieronder kun je het zelf anders doen.</p>
+{% elif p.problemen %}
+<ul class="acties">{% for pr in p.problemen %}
+  <li><span class="icoon" aria-hidden="true">{{ '⛔' if pr.niveau == 'hard' else '⚠' }}</span><div class="tekst">{{ pr.tekst }}</div></li>
+{% endfor %}</ul>
+{% elif t and t.toegewezen %}<p>✔ Alles in orde.</p>{% endif %}
+
+<form method="post" action="/planbord/rit/{{ rit.id }}/toewijzen" class="filters">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <div><label for="r-chauffeur">Chauffeur</label><select id="r-chauffeur" name="chauffeur_id"><option value="">Niet gepland</option>
+    {% for c in p.keuzes %}<option value="{{ c.id }}" {% if rit.chauffeur_id == c.id %}selected{% endif %} {% if not c.kan %}disabled{% endif %}>{{ c.naam }} ({{ c.extra }})</option>{% endfor %}</select></div>
+  <div><label for="r-start">Begint om</label><input id="r-start" name="start" type="time" step="300" value="{{ rit.gepland_start|uur_nl }}"></div>
+  <div><button class="knop" {% if rit.vastheid == 'gestart' %}disabled{% endif %}>Opslaan</button></div>
+</form>
+<p class="hulp">De trekker en trailer van de chauffeur gaan vanzelf mee. Andere trekker voor één dag? Dat doe je in <a href="/wagenpark/koppelen?datum={{ p.datum }}">Wagenpark</a>.</p>
+
+<details class="meer">
+<summary>Meer: alle controles, status en terminal</summary>
+
+<p class="hulp">Duur: laden {{ p.duur.laden_min }} min + rijden {{ p.duur.reis.minuten }} min ({{ p.duur.reis.km }} km){% if p.duur.reis.is_aanname %} {{ aanname() }}{% endif %} + lossen {{ p.duur.lossen_min }} min.
+  Status: {{ rit.status }} · Vastheid: {{ rit.vastheid }}.</p>
+
+{% if t %}
+<h3>Alle controles {% if t.toegewezen %}{{ uitslag(t.ergste) }}{% endif %}</h3>
+{% if not t.toegewezen %}<p class="hulp">Kies een chauffeur en tijd om alles te controleren.</p>{% endif %}
+<div class="tabel-wrap"><table>
+  <thead><tr><th>Nr</th><th>Regel</th><th>Uitslag</th><th>Uitleg</th><th>Toch doorgaan</th></tr></thead>
+  <tbody>{% for u in t.uitslagen %}<tr>
+    <td>{{ u.nr }}</td><td>{{ u.naam|woorden }}</td>
+    <td>{{ uitslag(u.niveau) }}{% if u.status and u.status != 'bevestigd' %}<br>{{ regelstatus(u.status) }}{% endif %}</td>
+    <td>{{ u.uitleg|woorden }}{% if u.bedrag_cent %} <strong>({{ u.bedrag_cent|geld }})</strong>{% endif %}</td>
+    <td>{% if u.nr in p.override_nrs %}<span class="badge badge-schatting">Overruled</span>
+      {% elif u.niveau in ['hard', 'waarschuwing'] %}
+      <details><summary>Overrulen</summary>
+        <form method="post" action="/planbord/rit/{{ rit.id }}/override">
+          <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+          <input type="hidden" name="regel_nr" value="{{ u.nr }}"><input type="hidden" name="niveau" value="{{ u.niveau }}"><input type="hidden" name="uitleg" value="{{ u.uitleg }}">
+          <label for="rc-{{ loop.index }}">Reden</label><select id="rc-{{ loop.index }}" name="reden_code"><option value="">Kies</option>{% for code, tekst in p.redencodes.items() %}<option value="{{ code }}">{{ tekst }}</option>{% endfor %}</select>
+          <label for="rt-{{ loop.index }}">Waarom ga je door?</label><textarea id="rt-{{ loop.index }}" name="reden" rows="2" required></textarea>
+          <button class="knop knop-klein">Opslaan</button>
+        </form></details>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table></div>
+{% if t.kosten %}<p><strong>Kosten (schatting):</strong> {{ t.kosten.totaal_cent|geld }}. <span class="hulp">{{ t.kosten.uitleg|join(' ') }}</span></p>{% endif %}
+{% endif %}
+
+<details><summary>Trekker en trailer zelf kiezen (uitzondering)</summary>
+<form method="post" action="/planbord/rit/{{ rit.id }}/toewijzen" class="filters">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <div><label for="x-start">Begint om</label><input id="x-start" name="start" type="time" value="{{ rit.gepland_start|uur_nl }}"></div>
+  <div><label for="x-chauffeur">Chauffeur</label><select id="x-chauffeur" name="chauffeur_id"><option value="">Geen</option>
+    {% for x in p.chauffeurs %}<option value="{{ x.id }}" {% if rit.chauffeur_id == x.id %}selected{% endif %}>{{ x.pseudoniem }}</option>{% endfor %}</select></div>
+  <div><label for="x-trekker">Trekker</label><select id="x-trekker" name="trekker_id"><option value="">Geen</option>
+    {% for x in p.trekkers %}<option value="{{ x.id }}" {% if rit.trekker_id == x.id %}selected{% endif %}>{{ x.intern_nummer }}{% if x.status != 'actief' %} ({{ x.status }}){% endif %}</option>{% endfor %}</select></div>
+  <div><label for="x-chassis">Trailer</label><select id="x-chassis" name="chassis_id"><option value="">Geen</option>
+    {% for x in p.chassis %}<option value="{{ x.id }}" {% if rit.chassis_id == x.id %}selected{% endif %}>{{ x.nummer }} · {{ x.type }}</option>{% endfor %}</select></div>
+  <div><button class="knop knop-tweede" {% if rit.vastheid == 'gestart' %}disabled{% endif %}>Opslaan</button></div>
+</form></details>
+
+<div class="twee-kolommen">
+<div>
+<h3>Status</h3>
+{% if p.volgende_status %}<form method="post" action="/planbord/rit/{{ rit.id }}/status" class="inline">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <label for="r-status">Naar</label><select id="r-status" name="status">{% for s in p.volgende_status %}<option>{{ s }}</option>{% endfor %}</select>
+  <button class="knop knop-klein knop-tweede">Wijzig</button></form>{% else %}<p>Klaar.</p>{% endif %}
+<h3>Vastzetten</h3>
+<p class="hulp">Vastgezet = het automatische plan laat deze rit staan.</p>
+{% if rit.vastheid != 'gestart' %}<form method="post" action="/planbord/rit/{{ rit.id }}/vastheid" class="inline">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <input type="hidden" name="vastheid" value="{{ 'open' if rit.vastheid == 'toegezegd' else 'toegezegd' }}">
+  <button class="knop knop-klein knop-tweede">{{ 'Losmaken' if rit.vastheid == 'toegezegd' else 'Vastzetten' }}</button></form>{% else %}<p>Rit is gestart.</p>{% endif %}
+</div>
+<div>
+{% if p.terminals %}
+<h3>Terminal</h3>
+<ul>{% for s in p.slots %}<li>{{ s.terminal.naam }}: tijdslot {{ s.slot_van|uur_nl }}-{{ s.slot_tot|uur_nl }} ({{ s.status }}){% if s.afwijzingscode %}, afgewezen: {{ s.afwijzingscode }}{% endif %}</li>{% else %}<li>Nog niet aangemeld.</li>{% endfor %}</ul>
+{% if rit.gepland_start and rit.status in ('Gepland', 'Geaccepteerd') and not noodstop %}
+<form method="post" action="/planbord/rit/{{ rit.id }}/prenotificatie">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <label><input type="checkbox" name="bevestig" value="ja"> Bestaand tijdslot mag vervallen en opnieuw worden aangevraagd</label>
+  <button class="knop knop-klein knop-tweede">Aanmelden bij terminal (simulator)</button>
+</form>{% endif %}
+<details><summary>Tijdslot met de hand invullen</summary>
+<form method="post" action="/planbord/rit/{{ rit.id }}/slot">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <label for="s-term">Terminal</label><select id="s-term" name="terminal_id">{% for x in p.terminals %}<option value="{{ x.id }}">{{ x.naam }}</option>{% endfor %}</select>
+  <label for="s-van">Vanaf</label><input id="s-van" name="slot_van" type="time">
+  <label for="s-tot">Tot</label><input id="s-tot" name="slot_tot" type="time">
+  <label for="s-tar">TAR</label><input id="s-tar" name="tar">
+  <button class="knop knop-klein">Opslaan</button>
+</form></details>
+{% endif %}
+{% if p.overrides %}<h3>Overrules</h3><ul>{% for o in p.overrides %}<li>Regel {{ o.regel_nr }} door {{ o.gebruiker }} op {{ o.tijd|tijd_nl }}: {{ o.reden }}</li>{% endfor %}</ul>{% endif %}
+</div>
+</div>
+</details>

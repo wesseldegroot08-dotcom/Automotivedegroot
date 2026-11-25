@@ -1,0 +1,1 @@
+htmx.min.js: htmx 1.9.12, licentie Zero-Clause BSD (0BSD). Lokaal opgeslagen zodat de app offline werkt.

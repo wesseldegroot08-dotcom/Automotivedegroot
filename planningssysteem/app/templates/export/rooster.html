@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titel %}Rooster {{ datum.strftime('%d-%m-%Y') }}{% endblock %}
+{% block inhoud %}
+<h1>Rooster {{ datum.strftime('%A %d-%m-%Y') }}</h1>
+<p class="knoppen"><a class="knop" href="/export/rooster.csv?datum={{ datum }}">Download CSV</a>
+  <button class="knop knop-tweede" onclick="window.print()">Print</button>
+  <a class="knop knop-tweede" href="/planbord?datum={{ datum }}">Planbord</a></p>
+<p class="hulp">Bewaar deze export elke dag (print of CSV). Valt het systeem uit, dan werk je hiermee verder. Zie de noodprocedure.</p>
+{% for naam, rijen in per_chauffeur.items() %}
+<section class="kaart">
+<h2>{{ naam }}</h2>
+<div class="tabel-wrap"><table>
+<thead><tr><th>Tijd</th><th>Order</th><th>Van → naar</th><th>Container</th><th>Trekker / trailer</th><th>Slot / TAR</th><th>Gepubliceerd</th></tr></thead>
+<tbody>{% for r in rijen %}<tr><td>{{ r.start }}–{{ r.eind }}</td><td>{{ r.order }}<br><span class="hulp">{{ r.klant }}</span></td>
+<td>{{ r.van }} → {{ r.naar }}</td><td>{{ r.containers }}</td><td>{{ r.trekker }} / {{ r.chassis }}</td><td>{{ r.slot }} {{ r.tar }}</td>
+<td>{{ '✔ ja' if r.gepubliceerd == 'ja' else '✖ nee' }}</td></tr>{% endfor %}</tbody>
+</table></div>
+</section>
+{% else %}<p>Er zijn nog geen ingeplande ritten voor deze dag.</p>{% endfor %}
+<p class="hulp">{{ aantal }} rit(ten). Gemaakt door het planningssysteem (testversie).</p>
+{% endblock %}
