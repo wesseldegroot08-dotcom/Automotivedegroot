@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titel %}CSV importeren{% endblock %}
+{% block inhoud %}
+<p><a href="/voertuigen">← Voertuigen</a></p>
+<h1>Voertuigen importeren uit CSV</h1>
+<p>Gebruik dezelfde kolommen als de export (download eerst een export als voorbeeld). Scheidingsteken: puntkomma of komma.
+Rijen met een fout worden <strong>niet</strong> opgeslagen. Bestaat een kenteken of nummer al, dan wordt dat voertuig bijgewerkt.</p>
+{% if resultaat %}
+  {% if resultaat.goed %}<p class="melding melding-ok" role="status">✔ {{ resultaat.goed }} rij(en) opgeslagen.</p>{% endif %}
+  {% if resultaat.fouten %}<div class="melding melding-hard" role="alert"><p>⛔ {{ resultaat.fouten|length }} rij(en) geweigerd:</p>
+  <ul>{% for f in resultaat.fouten %}<li>{{ f }}</li>{% endfor %}</ul></div>{% endif %}
+{% endif %}
+<form method="post" enctype="multipart/form-data" class="kaart">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  <label for="soort">Soort</label>
+  <select id="soort" name="soort"><option value="trekker">Trekkers</option><option value="chassis">Chassis</option></select>
+  <label for="bestand">CSV-bestand</label>
+  <input id="bestand" name="bestand" type="file" accept=".csv,text/csv">
+  <button class="knop">Importeren</button>
+</form>
+{% endblock %}

@@ -2,7 +2,9 @@
 
 from tests.conftest import inloggen
 
-PAGINAS = ["/", "/stamdata", "/voertuigen", "/logboek", "/instellingen"]
+PAGINAS = ["/", "/stamdata", "/voertuigen", "/voertuigen/combinatie", "/voertuigen/import",
+           "/voertuigen/trekker/nieuw", "/voertuigen/chassis/nieuw", "/voertuigen/trekker/1",
+           "/voertuigen/chassis/1", "/logboek", "/instellingen"]
 
 
 def test_alle_hoofdpaginas_openen(client):

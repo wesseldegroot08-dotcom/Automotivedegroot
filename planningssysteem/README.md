@@ -83,7 +83,7 @@ Belangrijke keuzes:
 ## Status per mijlpaal
 
 - [x] Mijlpaal 1: basis (login, logboek, regels als data, demodata, stamdata-schermen, start-scripts)
-- [ ] Mijlpaal 2: voertuigen en regelmotor
+- [x] Mijlpaal 2: voertuigen en regelmotor (trekker, chassis, voorkeuren, combinatiepagina, sjablonen, CSV, gewicht, aslast, chassis-fit, ADR, reefer, hoogte, verbodsdag)
 - [ ] Mijlpaal 3: planbord
 - [ ] Mijlpaal 4: voorstellen (solver)
 - [ ] Mijlpaal 5: simulatoren en afronding

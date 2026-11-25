@@ -3,16 +3,46 @@
 {% block titel %}Voertuigen{% endblock %}
 {% block inhoud %}
 <h1>Voertuigen</h1>
+<p>Voeg trekkers en chassis toe. Het systeem rekent zelf uit wat een combinatie kan, en wat er nog ontbreekt.</p>
+{% if melding %}<p class="melding melding-ok">✔ {{ melding }}</p>{% endif %}
+<div class="balk">
+  <a class="knop" href="/voertuigen/trekker/nieuw">+ Nieuwe trekker</a>
+  <a class="knop" href="/voertuigen/chassis/nieuw">+ Nieuw chassis</a>
+  <a class="knop knop-tweede" href="/voertuigen/combinatie">Combinatie doorrekenen</a>
+  <a class="knop knop-tweede" href="/voertuigen/import">CSV importeren</a>
+</div>
+<details class="kaart"><summary><strong>Nieuw voertuig op basis van een sjabloon</strong></summary>
+  <ul>
+  {% for soort, lijst in sjablonen.items() %}{% for code, (naam, _) in lijst.items() %}
+    <li><a href="/voertuigen/{{ soort }}/nieuw?sjabloon={{ code }}">{{ naam }}</a></li>
+  {% endfor %}{% endfor %}
+  </ul>
+  <p class="hulp">Waarden uit een sjabloon zonder bron krijgen de vlag {{ aanname() }}. Vervang ze door echte waarden.</p>
+</details>
+<form method="get"><label class="vinkje"><input type="checkbox" name="archief" value="1" {% if archief %}checked{% endif %} onchange="this.form.submit()"> Ook gearchiveerde voertuigen tonen</label> <noscript><button class="knop knop-klein">Toon</button></noscript></form>
+
 <h2>Trekkers</h2>
+<p><a href="/voertuigen/export/trekker.csv">Download trekkers als CSV</a></p>
 <div class="tabel-wrap"><table>
-<thead><tr><th>Nr</th><th>Kenteken</th><th>Aandrijving</th><th>Tarra</th><th>ADR</th><th>Status</th></tr></thead>
-<tbody>{% for t in trekkers %}<tr><td>{{ t.intern_nummer }}</td><td>{{ t.kenteken }}</td><td>{{ t.aandrijving }}</td>
-<td class="getal">{{ t.tarra_kg|kg }} {% if t.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td><td>{{ t.adr_uitvoering }}</td><td>{{ t.status }}</td></tr>{% endfor %}</tbody>
+<thead><tr><th>Nr</th><th>Kenteken</th><th>Merk/model</th><th>Aandrijving</th><th>Tarra</th><th>ADR</th><th>Status</th><th>Ontbreekt nog</th><th></th></tr></thead>
+<tbody>{% for t, ontbreekt in trekkers %}<tr>
+<td>{{ t.intern_nummer }}</td><td>{{ t.kenteken }}</td><td>{{ t.merk_model or '' }}</td><td>{{ t.aandrijving }}</td>
+<td class="getal">{{ t.tarra_kg|kg }} {% if t.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td>
+<td>{{ t.adr_uitvoering }}</td><td>{{ t.status }}{% if t.gearchiveerd %} <span class="badge">Gearchiveerd</span>{% endif %}</td>
+<td>{% if ontbreekt %}{{ ontbreekt|length }} punt(en){% else %}<span class="badge badge-ok">✔ Compleet</span>{% endif %}</td>
+<td><a href="/voertuigen/trekker/{{ t.id }}">Openen</a></td></tr>{% endfor %}</tbody>
 </table></div>
+
 <h2>Chassis</h2>
+<p><a href="/voertuigen/export/chassis.csv">Download chassis als CSV</a></p>
 <div class="tabel-wrap"><table>
-<thead><tr><th>Nummer</th><th>Type</th><th>Assen</th><th>Tarra</th><th>Status</th></tr></thead>
-<tbody>{% for c in chassis %}<tr><td>{{ c.nummer }}</td><td>{{ c.type }}</td><td>{{ c.assen }}</td>
-<td class="getal">{{ c.tarra_kg|kg }} {% if c.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td><td>{{ c.status }}</td></tr>{% endfor %}</tbody>
+<thead><tr><th>Nummer</th><th>Type</th><th>Assen</th><th>Tarra</th><th>Geschikt voor</th><th>Status</th><th>Ontbreekt nog</th><th></th></tr></thead>
+<tbody>{% for c, ontbreekt in chassis %}<tr>
+<td>{{ c.nummer }}</td><td>{{ c.type }}</td><td>{{ c.assen }}</td>
+<td class="getal">{{ c.tarra_kg|kg }} {% if c.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td>
+<td>{{ c.geschikt_voor }}{% if c.genset != 'niet' %}, reefer (genset){% endif %}</td>
+<td>{{ c.status }}{% if c.gearchiveerd %} <span class="badge">Gearchiveerd</span>{% endif %}</td>
+<td>{% if ontbreekt %}{{ ontbreekt|length }} punt(en){% else %}<span class="badge badge-ok">✔ Compleet</span>{% endif %}</td>
+<td><a href="/voertuigen/chassis/{{ c.id }}">Openen</a></td></tr>{% endfor %}</tbody>
 </table></div>
 {% endblock %}

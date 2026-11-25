@@ -123,6 +123,10 @@ def controleer(velden: list[Veld], invoer: dict) -> Uitkomst:
         for fout in e.errors():
             naam = str(fout["loc"][0]) if fout["loc"] else ""
             fouten.setdefault(naam, FOUTEN.get(fout["type"], "Deze waarde klopt niet."))
+        # Een leeg verplicht veld krijgt altijd dezelfde, duidelijke melding.
+        for v in velden:
+            if v.verplicht and v.soort != "bool" and (ruw.get(v.naam) is None or str(ruw[v.naam]).strip() == ""):
+                fouten[v.naam] = FOUTEN["missing"]
         return Uitkomst(fouten=fouten)
     return Uitkomst(data=obj.model_dump())
 

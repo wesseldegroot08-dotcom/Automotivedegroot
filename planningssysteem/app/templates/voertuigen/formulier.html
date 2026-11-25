@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_velden.html" import velden as velden_macro %}
+{% from "_status.html" import aanname, regelstatus %}
+{% block titel %}{{ titel }}{% endblock %}
+{% block inhoud %}
+<p><a href="/voertuigen">← Voertuigen</a></p>
+<h1>{% if obj %}{{ titel }} {{ obj.kenteken or obj.nummer }}{% if obj.gearchiveerd %} <span class="badge">Gearchiveerd</span>{% endif %}{% else %}Nieuwe {{ titel|lower }}{% endif %}</h1>
+{% if request.query_params.get('opgeslagen') %}<p class="melding melding-ok" role="status">✔ Opgeslagen. De wijziging staat in het logboek.</p>{% endif %}
+{% if fouten %}<p class="melding melding-hard" role="alert">⛔ Niet opgeslagen. Controleer de velden met een melding.</p>{% endif %}
+
+{% if obj %}
+<section class="kaart" aria-labelledby="h-reken">
+  <h2 id="h-reken">Dit rekent het systeem zelf uit</h2>
+  <p><strong>Volledigheid: {{ volledig }}%.</strong> Hoe vollediger, hoe zekerder het systeem rekent.</p>
+  {% if ontbreekt %}
+  <h3>Dit ontbreekt nog</h3>
+  <ul>{% for tekst, belangrijk in ontbreekt %}<li>{% if belangrijk %}<strong>⚠ {{ tekst }}</strong>{% else %}{{ tekst }}{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="melding melding-ok">✔ Alle belangrijke gegevens zijn ingevuld.</p>{% endif %}
+  <h3>Combinaties ({{ 'met elk chassis' if soort == 'trekker' else 'met elke trekker' }})</h3>
+  <p class="hulp">Lege combinatie = trekker + chassis, zonder container. Max lading bij de intermodale grens die bij de trekker hoort. Lading = alles wat er nog bij mag, inclusief de lege container.</p>
+  <div class="tabel-wrap"><table>
+  <thead><tr><th>Trekker</th><th>Chassis</th><th>Lege combinatie</th><th>Grens</th><th>Max container (bruto)</th><th>Asgrens</th><th>Zekerheid</th><th>Geschikt voor</th><th></th></tr></thead>
+  <tbody>{% for r in combos %}<tr>
+    <td>{{ r.trekker.intern_nummer }} ({{ r.trekker.aandrijving }})</td><td>{{ r.chassis.nummer }} ({{ r.chassis.type }})</td>
+    {% if r.gewicht.ontbreekt %}<td colspan="3">⚠ Onbekend: {{ r.gewicht.ontbreekt|join(', ') }}</td>
+    {% else %}{% set g = r.gewicht.per_grens[0] %}
+    <td class="getal">{{ r.gewicht.lege_combinatie_kg|kg }}</td><td>{{ (g.limiet_kg/1000)|round(1) }} t {{ regelstatus(g.status) }}</td>
+    <td class="getal">{{ g.max_lading_kg|kg }}</td>{% endif %}
+    <td class="getal">{% if r.aslast %}{{ r.aslast.totaal_kg|kg }}{% endif %}</td>
+    <td>{% if r.gewicht.zekerheid == 'zeker' %}<span class="badge badge-ok">✔ zeker</span>{% else %}<span class="badge badge-aanname">⚑ {{ r.gewicht.zekerheid }}</span>{% endif %}</td>
+    <td>{{ r.geschikt|join('; ') }}</td>
+    <td><a href="/voertuigen/combinatie?trekker_id={{ r.trekker.id }}&chassis_id={{ r.chassis.id }}">Doorrekenen</a></td>
+  </tr>{% endfor %}</tbody></table></div>
+</section>
+{% endif %}
+
+<form method="post" class="formulier" action="/voertuigen/{{ soort }}/{% if obj %}{{ obj.id }}{% else %}nieuw{% endif %}" novalidate>
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  <h2>Gegevens</h2>
+  {{ velden_macro(velden, waarden, fouten, fk_keuzes) }}
+  <div class="knoppen"><button type="submit" class="knop">Opslaan</button><a class="knop knop-tweede" href="/voertuigen">Annuleren</a></div>
+</form>
+
+{% if obj %}
+<section class="kaart" id="voorkeuren" aria-labelledby="h-voorkeur">
+  <h2 id="h-voorkeur">Voorkeuren (zachte wensen voor het voorstel)</h2>
+  <p>Gewicht 0 = negeren, 10 = zeer belangrijk. Voorkeuren kosten alleen strafpunten als ze niet gehaald worden. Harde regels gaan altijd voor.</p>
+  <table><thead><tr><th>Soort</th><th>Waarde</th><th>Gewicht</th><th></th></tr></thead><tbody>
+  {% for v in voorkeuren %}<tr><td>{{ v.soort }}</td><td>{{ v.waarde }}</td><td>{{ v.gewicht }}</td>
+    <td><form method="post" action="/voertuigen/voorkeur/{{ v.id }}/verwijderen"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><button class="knop knop-klein knop-tweede">Verwijderen</button></form></td></tr>
+  {% else %}<tr><td colspan="4">Nog geen voorkeuren.</td></tr>{% endfor %}
+  </tbody></table>
+  <form method="post" action="/voertuigen/{{ soort }}/{{ obj.id }}/voorkeur" class="filters">
+    <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <div><label for="vk-soort">Soort</label><select id="vk-soort" name="soort">{% for s in voorkeur_soorten %}<option>{{ s }}</option>{% endfor %}</select></div>
+    <div><label for="vk-waarde">Waarde</label><input id="vk-waarde" name="waarde" list="taken" placeholder="bijv. tank/ADR of ECT Delta"></div>
+    <datalist id="taken">{% for t in voorkeur_taken %}<option value="{{ t }}">{% endfor %}</datalist>
+    <div><label for="vk-gewicht">Gewicht (0-10)</label><input id="vk-gewicht" name="gewicht" type="number" min="0" max="10" value="5"></div>
+    <div><button class="knop">Voorkeur toevoegen</button></div>
+  </form>
+  <h3>Niet beschikbaar (onderhoud, keuring)</h3>
+  <ul>{% for a in afwezigheid %}<li>{{ a.van|tijd_nl }} t/m {{ a.tot|tijd_nl }}: {{ a.reden }}</li>{% else %}<li>Geen periodes.</li>{% endfor %}</ul>
+  <p><a href="/stamdata/afwezigheid/nieuw">Periode toevoegen</a></p>
+</section>
+<form method="post" action="/voertuigen/{{ soort }}/{{ obj.id }}/archiveren" class="archief">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  <button class="knop knop-tweede">{% if obj.gearchiveerd %}Terughalen uit archief{% else %}Archiveren (niet verwijderen){% endif %}</button>
+  <p class="hulp">Archiveren verwijdert niets. Oude ritten blijven gekoppeld aan dit voertuig.</p>
+</form>
+{% endif %}
+{% endblock %}

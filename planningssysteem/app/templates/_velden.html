@@ -1,0 +1,34 @@
+{% from "_status.html" import aanname %}
+{# Formuliervelden tekenen. Werkt voor elk scherm met Veld-beschrijvingen. #}
+{% macro velden(lijst, waarden, fouten, fk_keuzes) %}
+  {% for v in lijst %}
+  <div class="veld {% if fouten.get(v.naam) %}veld-fout{% endif %}">
+    {% set w = waarden.get(v.naam, '') %}
+    {% if v.soort == 'bool' %}
+      <label class="vinkje"><input type="checkbox" name="{{ v.naam }}" {% if w in [True, 'on'] %}checked{% endif %}> {{ v.label }}</label>
+    {% else %}
+      <label for="{{ v.naam }}">{{ v.label }}{% if v.verplicht %} <span class="verplicht">(verplicht)</span>{% endif %}</label>
+      {% if v.soort == 'keuze' %}
+        <select id="{{ v.naam }}" name="{{ v.naam }}">
+          <option value="">— kies —</option>
+          {% for kz in v.keuzes %}<option value="{{ kz }}" {% if w|string == kz %}selected{% endif %}>{{ kz }}</option>{% endfor %}
+        </select>
+      {% elif v.soort == 'fk' %}
+        <select id="{{ v.naam }}" name="{{ v.naam }}">
+          <option value="">— kies —</option>
+          {% for id_, tekst in fk_keuzes[v.naam] %}<option value="{{ id_ }}" {% if w|string == id_|string %}selected{% endif %}>{{ tekst }}</option>{% endfor %}
+        </select>
+      {% elif v.soort == 'lang' %}
+        <textarea id="{{ v.naam }}" name="{{ v.naam }}" rows="3">{{ w }}</textarea>
+      {% else %}
+        <input id="{{ v.naam }}" name="{{ v.naam }}" value="{{ w }}"
+          type="{% if v.soort == 'datum' %}date{% elif v.soort == 'tijd' %}time{% elif v.soort == 'datumtijd' %}datetime-local{% elif v.soort == 'getal' %}number{% else %}text{% endif %}"
+          {% if v.soort == 'kommagetal' %}inputmode="decimal"{% endif %}>
+      {% endif %}
+    {% endif %}
+    {% if (v.naam.endswith('_is_aanname') and w in [True, 'on']) or (v.naam.endswith('_bron') and w == 'aanname') %} {{ aanname() }}{% endif %}
+    {% if v.hulp %}<p class="hulp">{{ v.hulp }}</p>{% endif %}
+    {% if fouten.get(v.naam) %}<p class="foutmelding" role="alert">⛔ {{ fouten[v.naam] }}</p>{% endif %}
+  </div>
+  {% endfor %}
+{% endmacro %}

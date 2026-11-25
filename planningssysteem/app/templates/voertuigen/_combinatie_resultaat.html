@@ -1,0 +1,34 @@
+{% from "_status.html" import regelstatus, uitslag, aanname %}
+{% for f in fouten %}<p class="melding melding-hard" role="alert">⛔ {{ f }}</p>{% endfor %}
+{% if resultaat %}{% set g = resultaat.gewicht %}
+<section class="kaart">
+  <h2>Uitkomst: {{ uitslag(resultaat.ergste) }}</h2>
+  {% if g.ontbreekt %}
+    <p class="melding melding-waarschuwing">⚠ Gewicht kan niet berekend worden. Ontbreekt: {{ g.ontbreekt|join(', ') }}.</p>
+  {% else %}
+  <p>Lege combinatie (trekker + chassis + lege container): <strong>{{ g.lege_combinatie_kg|kg }}</strong>.
+     Lading: <strong>{{ g.lading_kg|kg }}</strong>. Totaal: <strong>{{ g.totaal_kg|kg }}</strong>.
+     Zekerheid: {% if g.zekerheid == 'zeker' %}<span class="badge badge-ok">✔ zeker</span>{% else %}<span class="badge badge-aanname">⚑ {{ g.zekerheid }}</span>{% endif %}</p>
+  {% if g.onzeker %}<ul class="hulp">{% for o in g.onzeker %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
+  <div class="tabel-wrap"><table>
+    <thead><tr><th>Grens</th><th>Toegestaan</th><th>Max lading</th><th>Marge</th><th>Past?</th><th>Status regel</th></tr></thead>
+    <tbody>{% for r in g.per_grens %}<tr {% if r.code == resultaat.grens_code %}class="geselecteerd"{% endif %}>
+      <td>{{ r.naam }}{% if r.code == resultaat.grens_code %} <strong>(geldt voor deze route)</strong>{% endif %}</td>
+      <td class="getal">{{ r.limiet_kg|kg }}</td><td class="getal">{{ r.max_lading_kg|kg }}</td>
+      <td class="getal">{% if r.marge_kg >= 0 %}+{% endif %}{{ r.marge_kg|kg }}</td>
+      <td>{% if r.past %}<span class="badge badge-ok">✔ Past</span>{% else %}<span class="badge badge-hard">✖ Te zwaar</span>{% endif %}</td>
+      <td>{{ regelstatus(r.status) }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% if resultaat.aslast %}<p>Asgrens: {{ resultaat.aslast.totaal_kg|kg }} ({{ resultaat.aslast.uitleg }}){% if resultaat.aslast.alternatief_kg %}. Met tridem 27.000 kg (Open): {{ resultaat.aslast.alternatief_kg|kg }}{% endif %}.</p>{% endif %}
+  <p>Geschikt voor: {{ resultaat.geschikt|join('; ') }}.</p>
+  <h3>Regels getoetst</h3>
+  <div class="tabel-wrap"><table>
+    <thead><tr><th>Nr</th><th>Regel</th><th>Uitslag</th><th>Uitleg</th><th>Bron en status</th></tr></thead>
+    <tbody>{% for u in resultaat.uitslagen %}<tr>
+      <td>{{ u.nr }}</td><td>{{ u.naam }}</td><td>{{ uitslag(u.niveau) }}{% if u.niveau == 'waarschuwing' and u.hard_voor_voorstel %}<br><span class="hulp">Hard voor een automatisch voorstel</span>{% endif %}</td>
+      <td>{{ u.uitleg }}</td><td>{{ u.bron }} {% if u.status %}{{ regelstatus(u.status) }}{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="hulp">Let op: dit is een berekening met waarden uit de regeltabel. Controleer gewichten en regels bij de bron. De VGM-tolerantie (500 kg of 5%) is een zeevaartregel en geen toestemming om op de weg te zwaar te rijden.</p>
+</section>
+{% elif not fouten %}<p>Kies een trekker en een chassis om te beginnen.</p>{% endif %}
