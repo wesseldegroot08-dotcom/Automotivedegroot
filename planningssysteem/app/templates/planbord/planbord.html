@@ -19,7 +19,9 @@
 <div class="balk">
   <p><strong>{{ aantal_toegewezen }}</strong> van {{ aantal_ritten }} ritten ingepland.
     {% if gepubliceerd %}<span class="badge badge-ok">✔ Gepubliceerd</span>{% elif blokkerend %}<span class="badge badge-hard">⛔ {{ blokkerend|length }} rit(ten) met een harde regel</span>{% endif %}</p>
-  {% block voorstel_knoppen %}{% endblock %}
+  {% if not noodstop %}<form method="post" action="/voorstellen/maken"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+    <button class="knop knop-tweede">Maak voorstel voor deze dag</button></form>{% endif %}
+  <a class="knop knop-tweede" href="/voorstellen?datum={{ datum }}">Voorstellen</a>
   <form method="post" action="/planbord/publiceren"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
     <button class="knop">Publiceer planning</button></form>
   <a class="knop knop-tweede" href="/export/rooster?datum={{ datum }}">Rooster (print / CSV)</a>

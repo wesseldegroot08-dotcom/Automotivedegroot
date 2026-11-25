@@ -520,3 +520,79 @@ class Override(Base):
     gebruiker: Mapped[str] = mapped_column(String(50), nullable=False)
     tijd: Mapped[datetime] = mapped_column(UTCDatumTijd, default=nu_utc, nullable=False)
     actief: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+# ---------------------------------------------------------------- mijlpaal 4: job-wachtrij en voorstellen
+
+
+class Job(Base):
+    """Eenvoudige wachtrij in de database. 'sleutel' maakt een taak idempotent: dezelfde sleutel = dezelfde taak."""
+
+    __tablename__ = "job"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    soort: Mapped[str] = mapped_column(String(40), nullable=False)
+    sleutel: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="wachtend")  # wachtend/bezig/klaar/fout
+    resultaat: Mapped[str | None] = mapped_column(Text)
+    fout: Mapped[str | None] = mapped_column(Text)
+    pogingen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    aangemaakt: Mapped[datetime] = mapped_column(UTCDatumTijd, default=nu_utc, nullable=False)
+    gestart: Mapped[datetime | None] = mapped_column(UTCDatumTijd)
+    klaar: Mapped[datetime | None] = mapped_column(UTCDatumTijd)
+
+
+class Voorstel(Base):
+    """Een planningsvoorstel van de solver. Berekend -> Voorgesteld -> Goedgekeurd/Afgekeurd -> Gepubliceerd."""
+
+    __tablename__ = "voorstel"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    datum: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="Berekend")
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("job.id"))
+    aangemaakt_door: Mapped[str] = mapped_column(String(50), nullable=False)
+    aangemaakt: Mapped[datetime] = mapped_column(UTCDatumTijd, default=nu_utc, nullable=False)
+    regelversie: Mapped[str] = mapped_column(String(64), nullable=False)
+    invoer_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    invoer: Mapped[str] = mapped_column(Text, nullable=False)  # JSON: wat de solver kreeg
+    solver_status: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    rekentijd_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ingepland: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ongepland: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lege_km: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lege_min: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    wacht_min: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    exact_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    beoordeeld_door: Mapped[str | None] = mapped_column(String(50))
+    beoordeeld: Mapped[datetime | None] = mapped_column(UTCDatumTijd)
+    reden_afkeur: Mapped[str | None] = mapped_column(Text)
+    aangepast_door_planner: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    regels = relationship("VoorstelRit", back_populates="voorstel", order_by="VoorstelRit.id")
+
+
+class VoorstelRit(Base):
+    """Eén keuze in een voorstel: welke rit, met welke middelen, wanneer. Of: niet te plannen, met reden."""
+
+    __tablename__ = "voorstel_rit"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    voorstel_id: Mapped[int] = mapped_column(ForeignKey("voorstel.id"), nullable=False)
+    rit_id: Mapped[int] = mapped_column(ForeignKey("rit.id"), nullable=False)
+    ingepland: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    vast: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # toegezegd of gestart
+    start: Mapped[datetime | None] = mapped_column(UTCDatumTijd)
+    eind: Mapped[datetime | None] = mapped_column(UTCDatumTijd)
+    trekker_id: Mapped[int | None] = mapped_column(ForeignKey("trekker.id"))
+    chassis_id: Mapped[int | None] = mapped_column(ForeignKey("chassis.id"))
+    chauffeur_id: Mapped[int | None] = mapped_column(ForeignKey("chauffeur.id"))
+    lege_km: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lege_min: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    uitleg: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    reden: Mapped[str | None] = mapped_column(Text)  # waarom niet gepland
+    harde_problemen: Mapped[str | None] = mapped_column(Text)  # uit de exacte controle
+
+    voorstel = relationship("Voorstel", back_populates="regels")
+    rit = relationship("Rit")
+    trekker = relationship("Trekker")
+    chassis = relationship("Chassis")
+    chauffeur = relationship("Chauffeur")

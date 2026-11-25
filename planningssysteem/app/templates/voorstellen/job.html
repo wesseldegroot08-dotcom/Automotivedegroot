@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block titel %}Voorstel wordt berekend{% endblock %}
+{% block inhoud %}
+<p><a href="/voorstellen?datum={{ datum }}">← Voorstellen</a></p>
+<h1>Voorstel voor {{ datum }}</h1>
+{% include "voorstellen/_job.html" %}
+{% endblock %}

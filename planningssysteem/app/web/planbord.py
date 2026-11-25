@@ -17,6 +17,7 @@ from app.keuzes import REDENCODES
 from app.planner.context import dag_grenzen, laad_dag
 from app.planner.ritten import maak_rit_voor_order, orders_zonder_rit, plan_rit
 from app.planner.voorfilter import beschikbare_chauffeurs, eenheden, toegestane_paren
+from app.planner.voorstel import aangepast_door_planner, blokkades_voor_publiceren, goedgekeurd_voorstel
 from app.ports.clock import NL, morgen_nl, vandaag_nl
 from app.rules.basis import HARD, WAARSCHUWING
 from app.rules.kosten import dd_bedrag_per_dag
@@ -406,13 +407,17 @@ async def publiceren(request: Request, db: Session = Depends(get_db), gebruiker=
     toegewezen = [t for t in toetsen.values() if t.toegewezen]
     if not toegewezen:
         return _terug(d, fout="Er zijn nog geen ingeplande ritten om te publiceren.")
-    blokkades = [(t.rit, u) for t in toegewezen for u in open_harde_regels(ctx, t)]
+    voorstel = goedgekeurd_voorstel(db, d)
+    blokkades = blokkades_voor_publiceren(ctx, toetsen, voorstel)
     if blokkades:
         tekst = "; ".join(f"rit {r.id} regel {u.nr}" for r, u in blokkades[:8])
         return _terug(d, fout=f"Niet gepubliceerd: {len(blokkades)} harde regel(s) zonder override ({tekst}). "
                               "Los ze op of overrule ze met een reden.")
     for t in toegewezen:
         t.rit.gepubliceerd = True
+    if voorstel:
+        voorstel.aangepast_door_planner = aangepast_door_planner(voorstel, ctx)
+        zet_status(voorstel, "voorstel", "Gepubliceerd")
     log_actie(db, "publiceren", tabel="planning", record_id=d.isoformat(),
               na={"ritten": [t.rit.id for t in toegewezen]})
     db.commit()

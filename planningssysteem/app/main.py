@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import BASIS_MAP, instellingen
-from app.web import algemeen, planbord, stamdata, voertuigen
+from app.web import algemeen, planbord, stamdata, voertuigen, voorstellen
 from app.web.deps import NietIngelogd, csrf_token
 from app.web.sjablonen import templates
 
@@ -31,6 +31,7 @@ def maak_app() -> FastAPI:
     app.include_router(stamdata.router)
     app.include_router(voertuigen.router)
     app.include_router(planbord.router)
+    app.include_router(voorstellen.router)
 
     @app.exception_handler(NietIngelogd)
     async def _niet_ingelogd(request: Request, _exc):

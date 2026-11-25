@@ -22,7 +22,7 @@ def wie(session: Session) -> str:
     return session.info.get("gebruiker", "systeem")
 
 # Tabellen die we niet loggen: het logboek zelf en de inlogpogingen (die hebben eigen rijen).
-NIET_LOGGEN = {AuditLog.__tablename__, InlogPoging.__tablename__, "job"}
+NIET_LOGGEN = {AuditLog.__tablename__, InlogPoging.__tablename__, "job", "voorstel_rit"}
 # Velden die nooit in het logboek mogen.
 GEHEIM = {"wachtwoord_hash"}
 

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titel %}Voorstel {{ v.id }}{% endblock %}
+{% block inhoud %}
+<p><a href="/voorstellen?datum={{ v.datum }}">← Voorstellen</a> · <a href="/planbord?datum={{ v.datum }}">Planbord</a></p>
+<h1>Voorstel {{ v.id }} voor {{ v.datum.strftime('%d-%m-%Y') }} <span class="badge">{{ v.status }}</span></h1>
+{% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+{% if not v.exact_ok %}<p class="melding melding-hard" role="alert">⛔ De exacte controle keurt dit voorstel af. Het kan niet gepubliceerd worden.</p>{% endif %}
+{% if verouderd %}<p class="melding melding-waarschuwing" role="alert">⚠ Het plan of de orders zijn veranderd sinds dit voorstel. Herbereken voordat je goedkeurt.</p>{% endif %}
+<p class="klein">Gemaakt door {{ v.aangemaakt_door }} op {{ v.aangemaakt|tijd_nl }}. Solver: {{ v.solver_status }} in {{ (v.rekentijd_ms / 1000)|round(1) }} s.
+Regelversie {{ v.regelversie }}{% if v.regelversie != regelversie_nu %} (<strong>de regels zijn sindsdien gewijzigd</strong>){% endif %}.
+De uitleg komt uit de code en de exacte controle, niet uit een taalmodel.</p>
+
+<h2>Vergelijking met het huidige plan</h2>
+<div class="tabel-wrap"><table>
+<thead><tr><th></th><th>Huidig plan</th><th>Voorstel</th></tr></thead>
+<tbody>
+<tr><td>Ritten ingepland</td><td>{{ huidig.ingepland }}</td><td>{{ v.ingepland }}</td></tr>
+<tr><td>Lege km (incl. naar en van de standplaats)</td><td>{{ huidig.lege_km }}</td><td>{{ v.lege_km }}</td></tr>
+<tr><td>Leeg rijden (minuten)</td><td>{{ huidig.lege_min }}</td><td>{{ v.lege_min }}</td></tr>
+<tr><td>Wachttijd tussen ritten (minuten)</td><td>{{ huidig.wacht_min }}</td><td>{{ v.wacht_min }}</td></tr>
+{% if v.status in ('Goedgekeurd', 'Gepubliceerd') %}<tr><td>Aangepast door de planner</td><td colspan="2">{{ v.aangepast_door_planner }} rit(ten)</td></tr>{% endif %}
+</tbody></table></div>
+
+{% if v.status == 'Voorgesteld' and not noodstop %}
+<div class="knoppen">
+  <form method="post" action="/voorstellen/{{ v.id }}/goedkeuren"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <button class="knop" {% if not v.exact_ok or verouderd %}disabled{% endif %}>Keur goed en zet op het planbord</button></form>
+  <form method="post" action="/voorstellen/maken"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <input type="hidden" name="datum" value="{{ v.datum }}"><input type="hidden" name="herbereken" value="ja">
+    <button class="knop knop-tweede">Herbereken</button></form>
+  <form method="post" action="/voorstellen/{{ v.id }}/afkeuren"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <label>Reden (mag leeg) <input name="reden" maxlength="300"></label> <button class="knop knop-tweede">Keur af</button></form>
+</div>
+{% endif %}
+
+<h2 id="niet">Kan niet gepland worden ({{ niet|length }})</h2>
+{% if niet %}<ul>{% for r in niet %}<li><strong>{{ r.rit.order.klantreferentie }}</strong> ({{ r.rit.van_locatie.naam }} → {{ r.rit.naar_locatie.naam }}): {{ r.reden }}</li>{% endfor %}</ul>
+{% else %}<p>Alle ritten zijn ingepland.</p>{% endif %}
+
+<h2>Ingepland ({{ ingepland|length }})</h2>
+{% for r in ingepland %}
+<article class="kaart">
+  <h3>{{ r.rit.order.klantreferentie }}: {{ r.start|uur_nl }}{% if r.eind %}–{{ r.eind|uur_nl }}{% endif %},
+    trekker {{ r.trekker.intern_nummer }} + {{ r.chassis.nummer }}, {{ r.chauffeur.pseudoniem }}
+    {% if r.vast %}<span class="badge">Staat vast</span>{% endif %}</h3>
+  <p>{{ r.uitleg }}</p>
+  {% if r.harde_problemen %}<p class="melding melding-hard">⛔ {{ r.harde_problemen }}</p>{% endif %}
+</article>
+{% endfor %}
+{% endblock %}

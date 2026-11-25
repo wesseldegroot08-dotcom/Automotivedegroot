@@ -1,0 +1,11 @@
+<div id="job" {% if job.status in ('wachtend', 'bezig') %}hx-get="/voorstellen/job/{{ job.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+{% if job.status in ('wachtend', 'bezig') %}
+  <p class="melding" role="status">⏳ De solver rekent ({{ job.status }}). Dit duurt hooguit de ingestelde rekentijd. De pagina ververst vanzelf.</p>
+  <noscript><p><a href="/voorstellen/job/{{ job.id }}">Ververs</a></p></noscript>
+{% elif job.status == 'fout' %}
+  <p class="melding melding-hard" role="alert">⛔ Het voorstel is niet gelukt: {{ (job.fout or '').splitlines()[0] }}</p>
+  <p>Er is niets veranderd. Plan handmatig of probeer het opnieuw.</p>
+{% elif voorstel_id %}
+  <p class="melding melding-ok">✔ Klaar. <a href="/voorstellen/{{ voorstel_id }}">Bekijk voorstel {{ voorstel_id }}</a></p>
+{% endif %}
+</div>

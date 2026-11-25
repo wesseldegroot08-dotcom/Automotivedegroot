@@ -127,3 +127,5 @@ details summary { cursor: pointer; }
 .sleepbaar { cursor: grab; }
 .rit-paneel { border-width: 3px; border-color: var(--primair); margin-top: 1rem; }
 button[disabled] { opacity: .5; cursor: not-allowed; }
+.knop:disabled { opacity: .5; cursor: not-allowed; }
+.klein { font-size: .9rem; color: #444; }
