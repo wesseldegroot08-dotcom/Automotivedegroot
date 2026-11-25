@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_status.html" import aanname %}
+{% block titel %}Voertuigen{% endblock %}
+{% block inhoud %}
+<h1>Voertuigen</h1>
+<h2>Trekkers</h2>
+<div class="tabel-wrap"><table>
+<thead><tr><th>Nr</th><th>Kenteken</th><th>Aandrijving</th><th>Tarra</th><th>ADR</th><th>Status</th></tr></thead>
+<tbody>{% for t in trekkers %}<tr><td>{{ t.intern_nummer }}</td><td>{{ t.kenteken }}</td><td>{{ t.aandrijving }}</td>
+<td class="getal">{{ t.tarra_kg|kg }} {% if t.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td><td>{{ t.adr_uitvoering }}</td><td>{{ t.status }}</td></tr>{% endfor %}</tbody>
+</table></div>
+<h2>Chassis</h2>
+<div class="tabel-wrap"><table>
+<thead><tr><th>Nummer</th><th>Type</th><th>Assen</th><th>Tarra</th><th>Status</th></tr></thead>
+<tbody>{% for c in chassis %}<tr><td>{{ c.nummer }}</td><td>{{ c.type }}</td><td>{{ c.assen }}</td>
+<td class="getal">{{ c.tarra_kg|kg }} {% if c.tarra_bron == 'aanname' %}{{ aanname() }}{% endif %}</td><td>{{ c.status }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

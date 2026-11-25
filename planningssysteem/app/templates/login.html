@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titel %}Inloggen{% endblock %}
+{% block inhoud %}
+<section class="kaart smal">
+  <h1>Inloggen</h1>
+  <p>Planningssysteem voor Demo Transport BV (verzonnen bedrijf).</p>
+  {% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <label for="gebruikersnaam">Gebruikersnaam</label>
+    <input id="gebruikersnaam" name="gebruikersnaam" autocomplete="username" required autofocus>
+    <label for="wachtwoord">Wachtwoord</label>
+    <input id="wachtwoord" name="wachtwoord" type="password" autocomplete="current-password" required>
+    <button type="submit" class="knop">Inloggen</button>
+  </form>
+  <p class="hulp">Demo-gebruikers: <code>planner</code>, <code>admin</code> en <code>chauffeur</code>.
+  Het wachtwoord staat in het bestand <code>.env</code> (DEMO_WACHTWOORD). Alleen voor gebruik op je eigen computer.</p>
+</section>
+{% endblock %}
