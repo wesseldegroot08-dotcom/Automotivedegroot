@@ -129,3 +129,11 @@ details summary { cursor: pointer; }
 button[disabled] { opacity: .5; cursor: not-allowed; }
 .knop:disabled { opacity: .5; cursor: not-allowed; }
 .klein { font-size: .9rem; color: #444; }
+.chauffeur { max-width: 36rem; margin: 0 auto; }
+.grote-knoppen { display: grid; gap: .8rem; }
+.knop-groot { width: 100%; font-size: 1.3rem; padding: 1rem; }
+.stops { padding-left: 1.2rem; }
+@media print { header, nav, footer, form, .knop { display: none !important; } body { background: #fff; } }
+.twee-kolommen { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; align-items: start; }
+.brontekst { white-space: pre-wrap; font-size: .9rem; }
+textarea { width: 100%; font: inherit; }

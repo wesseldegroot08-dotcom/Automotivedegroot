@@ -68,11 +68,6 @@ def start(request: Request, db: Session = Depends(get_db), gebruiker=Depends(hui
     return templates.TemplateResponse(request, "start.html", {"tellers": tellers, "open_regels": open_regels})
 
 
-@router.get("/chauffeur")
-def chauffeur_start(request: Request, gebruiker=Depends(huidige_gebruiker)):
-    return templates.TemplateResponse(request, "chauffeur_leeg.html", {})
-
-
 @router.get("/logboek")
 def logboek(request: Request, q: str = "", actie: str = "", tabel: str = "", gebruiker_filter: str = "",
             van: str = "", tot: str = "", pagina: int = 1,
@@ -121,5 +116,18 @@ async def instelling_opslaan(sleutel: str, request: Request, db: Session = Depen
         raise HTTPException(404, "Onbekende instelling.")
     form = await request.form()
     obj.waarde = str(form.get("waarde", "")).strip()
+    db.commit()
+    return RedirectResponse("/instellingen", status_code=303)
+
+
+@router.post("/noodstop")
+async def noodstop(request: Request, db: Session = Depends(get_db), gebruiker=Depends(alleen_admin)):
+    """Eén knop: voorstellen en automatische berichten uit (of weer aan). Het planbord blijft werken."""
+    form = await request.form()
+    obj = db.get(m.Instelling, "noodstop")
+    aan = str(form.get("stand", "aan")) == "aan"
+    obj.waarde = "aan" if aan else "uit"
+    log_actie(db, "noodstop " + obj.waarde, tabel="instelling", record_id="noodstop",
+              reden=str(form.get("reden", "")).strip() or None)
     db.commit()
     return RedirectResponse("/instellingen", status_code=303)

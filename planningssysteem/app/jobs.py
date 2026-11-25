@@ -43,7 +43,8 @@ def plaats_job(db: Session, soort: str, payload: dict, sleutel: str) -> m.Job:
 
 
 def voer_uit(job_id: int) -> None:
-    import app.planner.voorstel  # noqa: F401  (registreert de handler)
+    import app.berichten  # noqa: F401  (registreert de handlers)
+    import app.planner.voorstel  # noqa: F401
 
     with dbmod.SessionLocal() as db:
         job = db.get(m.Job, job_id)

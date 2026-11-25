@@ -61,6 +61,12 @@
 {% if p.terminals %}
 <h3>Slot en pre-notificatie</h3>
 <ul>{% for s in p.slots %}<li>{{ s.terminal.naam }}: {{ s.slot_van|uur_nl }}-{{ s.slot_tot|uur_nl }}, status {{ s.status }}{% if s.tar %}, TAR {{ s.tar }}{% endif %}{% if s.afwijzingscode %}, afwijzing {{ s.afwijzingscode }}{% endif %}</li>{% else %}<li>Nog geen slot.</li>{% endfor %}</ul>
+{% if rit.gepland_start and rit.status in ('Gepland', 'Geaccepteerd') and not noodstop %}
+<form method="post" action="/planbord/rit/{{ rit.id }}/prenotificatie">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">
+  <label><input type="checkbox" name="bevestig" value="ja"> Ik weet dat een bestaand slot dan wordt geannuleerd en opnieuw aangevraagd (zelfde label)</label>
+  <button class="knop knop-klein">Stuur pre-notificatie (simulator)</button>
+</form>{% endif %}
 <details><summary>Slot handmatig invullen</summary>
 <form method="post" action="/planbord/rit/{{ rit.id }}/slot">
   <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ p.datum }}">

@@ -596,3 +596,40 @@ class VoorstelRit(Base):
     trekker = relationship("Trekker")
     chassis = relationship("Chassis")
     chauffeur = relationship("Chauffeur")
+
+
+# ---------------------------------------------------------------- mijlpaal 5: berichten en order-concepten
+
+
+class Bericht(Base):
+    """Elk bericht naar en van de (gesimuleerde) Portbase. 'sleutel' voorkomt dubbele meldingen."""
+
+    __tablename__ = "bericht"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sleutel: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    soort: Mapped[str] = mapped_column(String(30), nullable=False)  # prenotificatie / annulering
+    rit_id: Mapped[int | None] = mapped_column(ForeignKey("rit.id"))
+    slot_id: Mapped[int | None] = mapped_column(ForeignKey("slot.id"))
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    verzoek: Mapped[str] = mapped_column(Text, nullable=False)
+    antwoord: Mapped[str | None] = mapped_column(Text)
+    code: Mapped[str | None] = mapped_column(String(10))  # COR, CDM, BLT
+    gebruiker: Mapped[str] = mapped_column(String(50), nullable=False)
+    tijd: Mapped[datetime] = mapped_column(UTCDatumTijd, default=nu_utc, nullable=False)
+
+
+class OrderConcept(Base, Tijdstempels):
+    """Een ingelezen order die nog door een mens gecontroleerd moet worden.
+
+    Ontvangen -> Gelezen -> Te controleren / Goedgekeurd -> (Afgekeurd). Pas na goedkeuring bestaat de order.
+    """
+
+    __tablename__ = "order_concept"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bron_tekst: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="Ontvangen")
+    velden: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
+    meldingen: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON: controles
+    uitlezer: Mapped[str] = mapped_column(String(30), nullable=False, default="regex")
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("order_.id"))
+    gebruiker: Mapped[str] = mapped_column(String(50), nullable=False)

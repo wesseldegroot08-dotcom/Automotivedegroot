@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titel %}Order inlezen{% endblock %}
+{% block inhoud %}
+<h1>Order inlezen</h1>
+<p>Plak de tekst uit de e-mail. Het systeem haalt de gegevens eruit. <strong>Jij controleert</strong> daarna. De order bestaat pas als jij hem goedkeurt.</p>
+<form method="post" action="/orders/inlezen" class="kaart">
+  <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+  <label for="tekst">Tekst van de e-mail</label>
+  <textarea id="tekst" name="tekst" rows="10" required placeholder="{{ voorbeeld }}"></textarea>
+  <button class="knop">Lees in</button>
+</form>
+<h2>Laatst ingelezen</h2>
+<ul>{% for c in concepten %}<li><a href="/orders/concept/{{ c.id }}">Concept {{ c.id }}</a> — {{ c.status }} — {{ c.aangemaakt|tijd_nl if c.aangemaakt else '' }}</li>{% else %}<li>Nog niets ingelezen.</li>{% endfor %}</ul>
+{% endblock %}

@@ -4,6 +4,24 @@
 {% block inhoud %}
 <h1>Instellingen</h1>
 <p>Alleen een admin kan instellingen wijzigen. Elke wijziging komt in het logboek.</p>
+{% set nood = (rijen|selectattr('sleutel', 'equalto', 'noodstop')|first) %}
+<section class="kaart" aria-labelledby="h-nood">
+  <h2 id="h-nood">Noodstop</h2>
+  {% if nood and nood.waarde == 'aan' %}
+  <p class="melding melding-hard">⛔ <strong>De noodstop staat AAN.</strong> Voorstellen en automatische berichten zijn uit. Het planbord werkt gewoon.</p>
+  {% else %}
+  <p>⬤ De noodstop staat uit. Druk erop als het systeem rare voorstellen doet of berichten niet kloppen. Je plant dan handmatig verder.</p>
+  {% endif %}
+  {% if request.session.get('rol') == 'admin' %}
+  <form method="post" action="/noodstop">
+    <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
+    <input type="hidden" name="stand" value="{{ 'uit' if nood and nood.waarde == 'aan' else 'aan' }}">
+    <label>Reden (voor het logboek) <input name="reden" maxlength="300"></label>
+    {% if nood and nood.waarde == 'aan' %}<button class="knop">Noodstop uitzetten</button>
+    {% else %}<button class="knop knop-gevaar">⛔ Noodstop: alles naar handmatig</button>{% endif %}
+  </form>
+  {% else %}<p class="hulp">Alleen een admin kan de noodstop bedienen.</p>{% endif %}
+</section>
 <div class="tabel-wrap">
 <table>
   <thead><tr><th>Instelling</th><th>Uitleg</th><th>Status</th><th>Waarde</th></tr></thead>

@@ -88,6 +88,13 @@ def binnen_slot(aankomst: datetime, slot_van: datetime, slot_tot: datetime, tole
     return slot_van - t <= aankomst <= slot_tot + t
 
 
+def no_show_geheven(instellingen: dict[str, str], tr: m.TerminalRegel, d: date) -> bool:
+    """Worden no-showkosten al echt gerekend? Instelling 'ja', of de ingangsdatum in de terminalregel is bereikt."""
+    if instellingen.get("no_show_heffing_actief", "nee") == "ja":
+        return True
+    return bool(tr.no_show_heffing_vanaf and d >= tr.no_show_heffing_vanaf)
+
+
 def regel_slot(ctx: DagContext, rit: m.Rit) -> list[Uitslag]:
     uit = []
     for bezoek in terminal_bezoeken(ctx, rit):
@@ -116,7 +123,7 @@ def regel_slot(ctx: DagContext, rit: m.Rit) -> list[Uitslag]:
                                f"{_in_nl(bezoek.aankomst):%H:%M}, tolerantie {tol} min).", bron, status))
         if ctx.nu > s.slot_van and rit.status in ("Concept", "Gepland", "Geaccepteerd"):
             bedrag = tr.no_show_kosten_cent
-            geheven = ctx.instellingen.get("no_show_heffing_actief", "nee") == "ja"
+            geheven = no_show_geheven(ctx.instellingen, tr, ctx.datum)
             tekst = "Het slot is al begonnen. Een wijziging of annulering telt nu als no-show"
             if bedrag:
                 euro = f"{bedrag / 100:.2f}".replace(".", ",")

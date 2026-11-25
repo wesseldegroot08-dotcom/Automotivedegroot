@@ -166,7 +166,8 @@ def _rit_context(db: Session, rit: m.Rit, d: date) -> dict:
     return {"rit": rit, "toets": t, "duur": ctx.rit_duur(rit), "trekkers": trekkers, "chassis": chassis,
             "chauffeurs": chauffeurs, "volgende_status": volgende("rit", rit.status), "redencodes": REDENCODES,
             "terminals": terminals, "slots": slots, "overrides": overrides, "datum": d,
-            "override_nrs": {o.regel_nr for o in overrides if o.actief}}
+            "override_nrs": {o.regel_nr for o in overrides if o.actief},
+            "noodstop": ctx.instellingen.get("noodstop") == "aan"}
 
 
 @router.get("")
@@ -432,3 +433,56 @@ def terminals(request: Request, db: Session = Depends(get_db), gebruiker=Depends
     locaties = db.scalars(select(m.Locatie).where(m.Locatie.type.in_(["terminal", "depot", "klant"]))
                           .order_by(m.Locatie.type, m.Locatie.naam)).all()
     return templates.TemplateResponse(request, "planbord/terminals.html", {"stats": stats, "locaties": locaties})
+
+
+def _stuur(db: Session, rit_id: int, gebruiker: str, bevestig: bool) -> tuple[list[str], str]:
+    """Via de job-wachtrij (idempotent): zelfde rit, tijd en keuze = zelfde taak."""
+    import json
+
+    from app.jobs import plaats_job, voer_uit
+
+    rit = db.get(m.Rit, rit_id)
+    sleutel = f"pn:{rit_id}:{rit.gepland_start.isoformat() if rit and rit.gepland_start else '-'}:{int(bevestig)}"
+    job = plaats_job(db, "prenotificatie", {"rit_id": rit_id, "gebruiker": gebruiker, "bevestig": bevestig}, sleutel)
+    db.commit()
+    voer_uit(job.id)
+    db.expire_all()
+    job = db.get(m.Job, job.id)
+    if job.status == "fout":
+        fout = (job.fout or "").splitlines()[0].split(": ", 1)[-1]
+        job.sleutel += f":mislukt-{job.id}"  # later opnieuw proberen mag
+        db.commit()
+        return [], fout
+    return json.loads(job.resultaat or "{}").get("teksten", []), ""
+
+
+@router.post("/rit/{rit_id}/prenotificatie")
+async def prenotificatie(rit_id: int, request: Request, db: Session = Depends(get_db),
+                         gebruiker=Depends(planner_of_admin)):
+    form = await request.form()
+    d = _datum(str(form.get("datum", "")))
+    teksten, fout = _stuur(db, rit_id, gebruiker.gebruikersnaam, form.get("bevestig") == "ja")
+    if fout:
+        return _terug(d, rit_id, fout=fout)
+    return _terug(d, rit_id, melding="Pre-notificatie (simulator): " + " ".join(teksten))
+
+
+@router.post("/prenotificaties")
+async def prenotificaties_dag(request: Request, db: Session = Depends(get_db), gebruiker=Depends(planner_of_admin)):
+    """Stuur pre-notificaties voor alle geplande ritten van de dag die nog geen slot hebben."""
+    form = await request.form()
+    d = _datum(str(form.get("datum", "")))
+    ctx = laad_dag(db, d)
+    gestuurd, fouten = 0, []
+    for rit in ctx.ritten:
+        if rit.status not in ("Gepland", "Geaccepteerd") or ctx.slots_per_rit.get(rit.id):
+            continue
+        if not any(loc.type == "terminal" for loc in (rit.van_locatie, rit.naar_locatie)):
+            continue
+        teksten, fout = _stuur(db, rit.id, gebruiker.gebruikersnaam, False)
+        if fout:
+            fouten.append(f"rit {rit.id}: {fout}")
+        else:
+            gestuurd += 1
+    melding = f"{gestuurd} pre-notificatie(s) verstuurd (simulator)."
+    return _terug(d, melding=melding, fout="; ".join(fouten[:5]))
