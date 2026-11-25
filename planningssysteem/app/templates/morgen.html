@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titel %}Morgen{% endblock %}
+{% block inhoud %}
+<div class="dagkop">
+  <h1>{{ datum|dag_titel }}</h1>
+  <div class="dagwissel">
+    <a href="/?datum={{ vorige }}" aria-label="Vorige dag">‹</a>
+    <a href="/?datum={{ volgende }}" aria-label="Volgende dag">›</a>
+  </div>
+</div>
+{% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
+{% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
+{% include "_morgen_stand.html" %}
+<div class="knoppen">
+  <a class="knop knop-tweede" href="/planbord?datum={{ datum }}">▦ Bekijk het planbord</a>
+  <a class="knop knop-tweede" href="/export/rooster?datum={{ datum }}">🖨 Rooster printen</a>
+  {% if not s.noodstop %}<form method="post" action="/morgen/opnieuw"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+    <button class="knop knop-tweede">↻ Plan opnieuw</button></form>{% endif %}
+</div>
+{% endblock %}

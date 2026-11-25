@@ -239,7 +239,7 @@ def test_toewijzen_via_formulier(client, db):
     r = client.post(f"/planbord/rit/{rit.id}/toewijzen", data={
         "datum": MORGEN.isoformat(), "start": "12:00", "trekker_id": t.id, "chassis_id": t.vaste_chassis_id,
         "chauffeur_id": chauffeur(db, "Bas").id, "csrf": token})
-    assert r.status_code == 200 and "Rit opgeslagen" in r.text
+    assert r.status_code == 200 and "Opgeslagen en gecontroleerd" in r.text
     db.expire_all()
     rit = db.get(m.Rit, rit.id)
     assert rit.status == "Gepland" and rit.gepland_start.astimezone(NL).hour == 12

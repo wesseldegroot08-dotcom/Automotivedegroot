@@ -67,6 +67,7 @@ class DagContext:
     wachttijden: dict[int, WachtStatistiek]
     standplaats: m.Locatie | None
     registraties: list[m.RijtijdRegistratie] = field(default_factory=list)
+    inzet: dict[int, int] = field(default_factory=dict)  # chauffeur_id -> trekker_id (uitzondering voor deze dag)
 
     @property
     def nu(self) -> datetime:
@@ -154,6 +155,10 @@ class DagContext:
                 g.rijtijd_vorige_week_min += r.rijtijd_min
         return g
 
+    def trekker_van(self, chauffeur: m.Chauffeur) -> int | None:
+        """De trekker die deze chauffeur vandaag rijdt: de uitzondering voor vandaag, anders zijn eigen trekker."""
+        return self.inzet.get(chauffeur.id) or chauffeur.voorkeur_trekker_id
+
     def is_afwezig(self, *, chauffeur_id=None, trekker_id=None, chassis_id=None) -> m.Afwezigheid | None:
         for a in self.afwezig:
             if (chauffeur_id and a.chauffeur_id == chauffeur_id) or (trekker_id and a.trekker_id == trekker_id) or (
@@ -209,6 +214,7 @@ def laad_dag(db: Session, d: date) -> DagContext:
     feest = {f.datum for f in db.scalars(select(m.Feestdag).where(m.Feestdag.land == "DE", m.Feestdag.rijverbod))}
     inst = {i.sleutel: i.waarde for i in db.scalars(select(m.Instelling))}
     standplaats = db.scalar(select(m.Locatie).where(m.Locatie.type == "overig", m.Locatie.naam.like("Standplaats%")))
+    inzet = {i.chauffeur_id: i.trekker_id for i in db.scalars(select(m.Inzet).where(m.Inzet.datum == d))}
     return DagContext(db, d, RegelBoek.laad(db), TabelReistijden(db), inst, ritten, feest, vandaag_regels, slots,
                       vrijgaven, list(db.scalars(select(m.DDTarief))), overrides, afwezig, wachttijd_statistiek(db),
-                      standplaats, registraties)
+                      standplaats, registraties, inzet)

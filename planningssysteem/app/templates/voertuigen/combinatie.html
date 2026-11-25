@@ -3,12 +3,12 @@
 {% block inhoud %}
 <p><a href="/voertuigen">← Voertuigen</a></p>
 <h1>Combinatie doorrekenen</h1>
-<p>Kies een trekker, een chassis en een of twee containers. Je ziet meteen het gewicht per grens en welke regels falen.</p>
+<p>Kies een trekker, een trailer en een of twee containers. Je ziet meteen het gewicht per grens en welke regels falen.</p>
 <form method="get" action="/voertuigen/combinatie" class="kaart" hx-get="/voertuigen/combinatie" hx-target="#resultaat" hx-trigger="change delay:300ms, submit" hx-push-url="true">
   <div class="filters">
     <div><label for="trekker_id">Trekker</label><select id="trekker_id" name="trekker_id"><option value="">— kies —</option>
       {% for t in trekkers %}<option value="{{ t.id }}" {% if keuze.trekker_id == t.id %}selected{% endif %}>{{ t.intern_nummer }} · {{ t.kenteken }} · {{ t.aandrijving }}</option>{% endfor %}</select></div>
-    <div><label for="chassis_id">Chassis</label><select id="chassis_id" name="chassis_id"><option value="">— kies —</option>
+    <div><label for="chassis_id">Trailer</label><select id="chassis_id" name="chassis_id"><option value="">— kies —</option>
       {% for c in chassis_lijst %}<option value="{{ c.id }}" {% if keuze.chassis_id == c.id %}selected{% endif %}>{{ c.nummer }} · {{ c.type }} · {{ c.assen }} assen</option>{% endfor %}</select></div>
     <div><label for="route">Route (bepaalt de grens)</label><select id="route" name="route">
       {% for r, tekst in [('NL','Nederland algemeen (50 t)'),('NL-intermodaal','Intermodaal (44 t of 42 t)'),('DE','Duitsland (40 t)'),('DE-intermodaal','Duitsland intermodaal'),('BE','België (Open)')] %}

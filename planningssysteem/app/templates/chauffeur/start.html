@@ -17,7 +17,7 @@
       {% if s.werkelijk_vertrek %}<br>✔ weg {{ s.werkelijk_vertrek|uur_nl }} ({{ s.wachttijd_min }} min daar){% endif %}</li>
   {% endfor %}</ol>
   <p>Container: {% for c in r.order.containers %}<strong>{{ c.nummer }}</strong> ({{ c.maat }} {{ c.type }}){% if not loop.last %}, {% endif %}{% endfor %}<br>
-  Trekker {{ r.trekker.intern_nummer if r.trekker else '-' }}, chassis {{ r.chassis.nummer if r.chassis else '-' }}<br>
+  Trekker {{ r.trekker.intern_nummer if r.trekker else '-' }}, trailer {{ r.chassis.nummer if r.chassis else '-' }}<br>
   {% for s in slots[r.id] %}Slot {{ s.terminal.naam }}: {{ s.slot_van|uur_nl }}-{{ s.slot_tot|uur_nl }}{% if s.tar %}, TAR {{ s.tar }}{% endif %}<br>{% endfor %}</p>
   <div class="grote-knoppen">
   {% for actie, tekst in knoppen[r.id] %}

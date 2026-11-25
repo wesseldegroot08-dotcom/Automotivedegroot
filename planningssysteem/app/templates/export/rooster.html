@@ -10,7 +10,7 @@
 <section class="kaart">
 <h2>{{ naam }}</h2>
 <div class="tabel-wrap"><table>
-<thead><tr><th>Tijd</th><th>Order</th><th>Van → naar</th><th>Container</th><th>Trekker / chassis</th><th>Slot / TAR</th><th>Gepubliceerd</th></tr></thead>
+<thead><tr><th>Tijd</th><th>Order</th><th>Van → naar</th><th>Container</th><th>Trekker / trailer</th><th>Slot / TAR</th><th>Gepubliceerd</th></tr></thead>
 <tbody>{% for r in rijen %}<tr><td>{{ r.start }}–{{ r.eind }}</td><td>{{ r.order }}<br><span class="hulp">{{ r.klant }}</span></td>
 <td>{{ r.van }} → {{ r.naar }}</td><td>{{ r.containers }}</td><td>{{ r.trekker }} / {{ r.chassis }}</td><td>{{ r.slot }} {{ r.tar }}</td>
 <td>{{ '✔ ja' if r.gepubliceerd == 'ja' else '✖ nee' }}</td></tr>{% endfor %}</tbody>

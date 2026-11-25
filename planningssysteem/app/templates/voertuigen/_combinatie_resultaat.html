@@ -6,7 +6,7 @@
   {% if g.ontbreekt %}
     <p class="melding melding-waarschuwing">⚠ Gewicht kan niet berekend worden. Ontbreekt: {{ g.ontbreekt|join(', ') }}.</p>
   {% else %}
-  <p>Lege combinatie (trekker + chassis + lege container): <strong>{{ g.lege_combinatie_kg|kg }}</strong>.
+  <p>Lege combinatie (trekker + trailer + lege container): <strong>{{ g.lege_combinatie_kg|kg }}</strong>.
      Lading: <strong>{{ g.lading_kg|kg }}</strong>. Totaal: <strong>{{ g.totaal_kg|kg }}</strong>.
      Zekerheid: {% if g.zekerheid == 'zeker' %}<span class="badge badge-ok">✔ zeker</span>{% else %}<span class="badge badge-aanname">⚑ {{ g.zekerheid }}</span>{% endif %}</p>
   {% if g.onzeker %}<ul class="hulp">{% for o in g.onzeker %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}
@@ -31,4 +31,4 @@
   </table></div>
   <p class="hulp">Let op: dit is een berekening met waarden uit de regeltabel. Controleer gewichten en regels bij de bron. De VGM-tolerantie (500 kg of 5%) is een zeevaartregel en geen toestemming om op de weg te zwaar te rijden.</p>
 </section>
-{% elif not fouten %}<p>Kies een trekker en een chassis om te beginnen.</p>{% endif %}
+{% elif not fouten %}<p>Kies een trekker en een trailer om te beginnen.</p>{% endif %}

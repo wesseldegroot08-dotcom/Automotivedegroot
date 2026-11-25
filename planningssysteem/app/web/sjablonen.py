@@ -55,4 +55,32 @@ def minuten(m: int | None) -> str:
     return f"{teken}{u} u {r:02d} min" if u else f"{teken}{r} min"
 
 
-templates.env.filters.update(kg=kg, geld=geld, tijd_nl=tijd_nl, uur_nl=uur_nl, minuten=minuten)
+DAGEN = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
+MAANDEN = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober",
+           "november", "december"]
+
+
+def dag_nl(d) -> str:
+    """date -> 'donderdag 26 november'"""
+    return f"{DAGEN[d.weekday()]} {d.day} {MAANDEN[d.month - 1]}"
+
+
+def dag_titel(d) -> str:
+    """'Morgen', 'Vandaag' of de dag zelf."""
+    from app.ports.clock import morgen_nl, vandaag_nl
+
+    if d == morgen_nl():
+        return f"Morgen · {dag_nl(d)}"
+    if d == vandaag_nl():
+        return f"Vandaag · {dag_nl(d)}"
+    return dag_nl(d).capitalize()
+
+
+def _woorden(t):
+    from app.eenvoudig import woorden
+
+    return woorden(t)
+
+
+templates.env.filters.update(kg=kg, geld=geld, tijd_nl=tijd_nl, uur_nl=uur_nl, minuten=minuten, dag_nl=dag_nl,
+                             dag_titel=dag_titel, woorden=_woorden)

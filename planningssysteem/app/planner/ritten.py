@@ -77,3 +77,16 @@ def plan_rit(ctx: DagContext, rit: m.Rit, start: datetime | None, trekker_id: in
             zet_status(rit.order, "order", "Nieuw")
     if rit not in ctx.ritten:
         ctx.ritten.append(rit)
+
+
+def plan_op_chauffeur(ctx: DagContext, rit: m.Rit, start: datetime | None, chauffeur_id: int | None) -> None:
+    """Plannen op de chauffeur: zijn trekker van vandaag en de gekoppelde trailer gaan automatisch mee."""
+    trekker_id = chassis_id = None
+    if chauffeur_id:
+        c = ctx.db.get(m.Chauffeur, chauffeur_id)
+        trekker_id = ctx.trekker_van(c) if c else None
+        if c and not trekker_id:
+            raise ValueError(f"{c.pseudoniem} heeft geen trekker. Koppel er een in Wagenpark.")
+        t = ctx.db.get(m.Trekker, trekker_id) if trekker_id else None
+        chassis_id = t.vaste_chassis_id if t else None
+    plan_rit(ctx, rit, start, trekker_id, chassis_id, chauffeur_id)

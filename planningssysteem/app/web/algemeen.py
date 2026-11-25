@@ -4,14 +4,14 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import models as m
 from app.audit import log_actie
 from app.auth import is_geremd, nieuw_csrf_token, probeer_inloggen
 from app.ports.clock import NL
-from app.web.deps import alleen_admin, csrf_controle, get_db, huidige_gebruiker, planner_of_admin
+from app.web.deps import alleen_admin, csrf_controle, get_db, planner_of_admin
 from app.web.sjablonen import templates
 
 router = APIRouter(dependencies=[Depends(csrf_controle)])
@@ -51,21 +51,6 @@ async def login(request: Request, db: Session = Depends(get_db)):
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
-
-
-@router.get("/")
-def start(request: Request, db: Session = Depends(get_db), gebruiker=Depends(huidige_gebruiker)):
-    if gebruiker.rol == "chauffeur":
-        return RedirectResponse("/chauffeur", status_code=303)
-    tellers = {
-        "Orders": db.scalar(select(func.count()).select_from(m.Order)),
-        "Trekkers": db.scalar(select(func.count()).select_from(m.Trekker).where(m.Trekker.gearchiveerd.is_(False))),
-        "Chassis": db.scalar(select(func.count()).select_from(m.Chassis).where(m.Chassis.gearchiveerd.is_(False))),
-        "Chauffeurs": db.scalar(select(func.count()).select_from(m.Chauffeur).where(m.Chauffeur.actief.is_(True))),
-        "Regels": db.scalar(select(func.count()).select_from(m.Regel)),
-    }
-    open_regels = db.scalar(select(func.count()).select_from(m.Regel).where(m.Regel.status != "bevestigd"))
-    return templates.TemplateResponse(request, "start.html", {"tellers": tellers, "open_regels": open_regels})
 
 
 @router.get("/logboek")

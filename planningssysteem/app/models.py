@@ -633,3 +633,18 @@ class OrderConcept(Base, Tijdstempels):
     uitlezer: Mapped[str] = mapped_column(String(30), nullable=False, default="regex")
     order_id: Mapped[int | None] = mapped_column(ForeignKey("order_.id"))
     gebruiker: Mapped[str] = mapped_column(String(50), nullable=False)
+
+
+class Inzet(Base):
+    """Uitzondering voor één dag: deze chauffeur rijdt vandaag een andere trekker dan zijn eigen trekker."""
+
+    __tablename__ = "inzet"
+    __table_args__ = (UniqueConstraint("datum", "chauffeur_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    datum: Mapped[date] = mapped_column(Date, nullable=False)
+    chauffeur_id: Mapped[int] = mapped_column(ForeignKey("chauffeur.id"), nullable=False)
+    trekker_id: Mapped[int] = mapped_column(ForeignKey("trekker.id"), nullable=False)
+    opmerking: Mapped[str | None] = mapped_column(String(200))
+
+    chauffeur = relationship("Chauffeur")
+    trekker = relationship("Trekker")

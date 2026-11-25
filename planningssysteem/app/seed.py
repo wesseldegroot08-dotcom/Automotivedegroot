@@ -4,7 +4,7 @@ Gebruik:
     python -m app.seed            -> vult de database (alleen als hij leeg is)
     python -m app.seed --reset    -> maakt alles leeg en vult opnieuw
 
-Het bedrijf heet "Demo Transport BV". Dat is geen echt bedrijf.
+De bedrijfsnaam in de app komt uit BEDRIJFSNAAM in .env. Alle data hieronder is verzonnen (demo).
 Chauffeurs hebben pseudoniemen. Terminals zijn echt (die zijn openbaar), maar de
 coördinaten zijn benaderd (aanname).
 
@@ -233,7 +233,7 @@ def vul(db: Session) -> None:
     depot_w = loc("depot", "Depot Waalhaven (demo)", 51.8880, 4.4300, (6, 0), (22, 0), "12345", 30)
     depot_m = loc("depot", "Depot Maasvlakte (demo)", 51.9500, 4.0300, (0, 0), (23, 59), "123456", 30)
     depot_b = loc("depot", "Depot Botlek (demo)", 51.8780, 4.2900, (6, 0), (20, 0), "12345", 30)
-    standplaats = loc("overig", "Standplaats Demo Transport BV (Barendrecht)", 51.8520, 4.5280, (0, 0), (23, 59),
+    standplaats = loc("overig", "Standplaats (demo, Barendrecht)", 51.8520, 4.5280, (0, 0), (23, 59),
                       "1234567", 0)
     db.flush()
 
@@ -390,7 +390,7 @@ def vul(db: Session) -> None:
     arend = chauffeur("Arend", 40, adr_b=lang, adr_t=lang, trekker_=t12, opm="ADR basis en tank")
     bas = chauffeur("Bas", 40, adr_b=lang, trekker_=t13, opm="ADR basis")
     celine = chauffeur("Celine", 40, trekker_=t15)
-    dirk = chauffeur("Dirk", 40, trekker_=t11, opm="Valkuil: zit bijna aan zijn weekrijtijd")
+    dirk = chauffeur("Dirk", 40, trekker_=t11, opm="Valkuil: weekrijtijd is bijna op")
     esra = chauffeur("Esra", 32, trekker_=t14)
     fenna = chauffeur("Fenna", 40, opm="Valkuil: heeft morgen verlof")
     gijs = chauffeur("Gijs", 40, ect=None, opm="Valkuil: geen geldige ECT-veiligheidstest")

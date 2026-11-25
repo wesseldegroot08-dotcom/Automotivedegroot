@@ -17,9 +17,9 @@
   <ul>{% for tekst, belangrijk in ontbreekt %}<li>{% if belangrijk %}<strong>⚠ {{ tekst }}</strong>{% else %}{{ tekst }}{% endif %}</li>{% endfor %}</ul>
   {% else %}<p class="melding melding-ok">✔ Alle belangrijke gegevens zijn ingevuld.</p>{% endif %}
   <h3>Combinaties ({{ 'met elk chassis' if soort == 'trekker' else 'met elke trekker' }})</h3>
-  <p class="hulp">Lege combinatie = trekker + chassis, zonder container. Max lading bij de intermodale grens die bij de trekker hoort. Lading = alles wat er nog bij mag, inclusief de lege container.</p>
+  <p class="hulp">Lege combinatie = trekker + trailer, zonder container. Max lading bij de intermodale grens die bij de trekker hoort. Lading = alles wat er nog bij mag, inclusief de lege container.</p>
   <div class="tabel-wrap"><table>
-  <thead><tr><th>Trekker</th><th>Chassis</th><th>Lege combinatie</th><th>Grens</th><th>Max container (bruto)</th><th>Asgrens</th><th>Zekerheid</th><th>Geschikt voor</th><th></th></tr></thead>
+  <thead><tr><th>Trekker</th><th>Trailer</th><th>Lege combinatie</th><th>Grens</th><th>Max container (bruto)</th><th>Asgrens</th><th>Zekerheid</th><th>Geschikt voor</th><th></th></tr></thead>
   <tbody>{% for r in combos %}<tr>
     <td>{{ r.trekker.intern_nummer }} ({{ r.trekker.aandrijving }})</td><td>{{ r.chassis.nummer }} ({{ r.chassis.type }})</td>
     {% if r.gewicht.ontbreekt %}<td colspan="3">⚠ Onbekend: {{ r.gewicht.ontbreekt|join(', ') }}</td>

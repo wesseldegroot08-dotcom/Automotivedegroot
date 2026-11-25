@@ -13,15 +13,16 @@ from sqlalchemy.orm import Session
 
 from app import models as m
 from app.audit import log_actie
+from app.eenvoudig import kort_reden, regel_zin
 from app.keuzes import REDENCODES
+from app.planner.automatisch import laatste_voorstel
 from app.planner.context import dag_grenzen, laad_dag
-from app.planner.ritten import maak_rit_voor_order, orders_zonder_rit, plan_rit
+from app.planner.ritten import maak_rit_voor_order, orders_zonder_rit, plan_op_chauffeur, plan_rit
 from app.planner.voorfilter import beschikbare_chauffeurs, eenheden, toegestane_paren
 from app.planner.voorstel import aangepast_door_planner, blokkades_voor_publiceren, goedgekeurd_voorstel
 from app.ports.clock import NL, morgen_nl, vandaag_nl
 from app.rules.basis import HARD, WAARSCHUWING
-from app.rules.kosten import dd_bedrag_per_dag
-from app.rules.planning import dd_banden, open_harde_regels, rijtijd_per_chauffeur, toets_dag
+from app.rules.planning import toets_dag
 from app.statussen import OngeldigeOvergang, volgende, zet_status
 from app.web.deps import csrf_controle, get_db, planner_of_admin
 from app.web.sjablonen import templates
@@ -48,48 +49,8 @@ def _positie(start: datetime, eind: datetime, d: date) -> tuple[float, float]:
     return round(links, 2), round(min(breed, 100 - links), 2)
 
 
-def dag_waarschuwingen(ctx, toetsen, rijtijden) -> list[dict]:
-    uit = []
-    dagen = int(ctx.instellingen.get("lfd_waarschuwing_dagen", "2"))
-    gezien = set()
-    for rit in ctx.ritten:
-        if not rit.order:
-            continue
-        for c in rit.order.containers:
-            v = ctx.vrijgave_per_container.get(c.id)
-            if v and c.id not in gezien and v.lfd <= ctx.datum + timedelta(days=dagen):
-                gezien.add(c.id)
-                banden = dd_banden(ctx, c)
-                dag_na = (v.lfd - v.ontlaaddatum).days + 2
-                bedrag = dd_bedrag_per_dag(banden, dag_na) if banden else None
-                tekst = f"LFD {v.lfd:%d-%m} voor {c.nummer} ({rit.order.klantreferentie})."
-                if bedrag:
-                    tekst += f" Daarna € {bedrag / 100:.2f} per dag demurrage (voorbeeldtarief).".replace(".", ",", 1)
-                uit.append({"soort": "LFD", "tekst": tekst, "rit_id": rit.id})
-            if v and (v.status != "Vrij" or not (v.commercieel and v.douane and v.terminal_status)):
-                uit.append({"soort": "Release", "tekst": f"Release ontbreekt voor {c.nummer} "
-                            f"({rit.order.klantreferentie}): status '{v.status}'.", "rit_id": rit.id})
-    for rit_id, t in toetsen.items():
-        for u in t.uitslagen:
-            if u.nr in (9, 10) and u.niveau in (HARD, WAARSCHUWING) and t.toegewezen:
-                uit.append({"soort": "Slot", "tekst": f"Rit {rit_id} ({t.rit.order.klantreferentie}): {u.uitleg}",
-                            "rit_id": rit_id})
-    for c in beschikbare_chauffeurs(ctx):
-        g = ctx.geschiedenis(c.id)
-        rest_week = ctx.boek.waarde("rijtijd.week", ctx.datum, 3360) - g.rijtijd_deze_week_min
-        if c.id in rijtijden:
-            rt = rijtijden[c.id][0]
-            rest_dag, rest_week = rt.rest_dag_min, rt.rest_week_min
-        else:
-            rest_dag = ctx.boek.waarde("rijtijd.dag", ctx.datum, 540)
-        if min(rest_dag, rest_week) < 120:
-            uit.append({"soort": "Rijtijd", "tekst": f"{c.pseudoniem} zit dicht bij de rijtijdlimiet: nog "
-                        f"{min(rest_dag, rest_week) // 60} u {min(rest_dag, rest_week) % 60:02d} min rijden over "
-                        f"(deze week nog {rest_week // 60} u).", "rit_id": None})
-    return uit
-
-
-def _kan_niet_gepland(ctx, toetsen) -> list[dict]:
+def _niet_gepland(ctx, toetsen) -> list[dict]:
+    """Ritten zonder chauffeur of tijd, met één korte reden in gewone woorden."""
     eenh = eenheden(ctx)
     chauffeurs = beschikbare_chauffeurs(ctx)
     uit = []
@@ -98,48 +59,76 @@ def _kan_niet_gepland(ctx, toetsen) -> list[dict]:
             continue
         t = toegestane_paren(ctx, rit, eenh, chauffeurs)
         if t.paren:
-            reden = f"Nog niet ingepland. {len(t.paren)} geschikte combinatie(s) mogelijk."
-            niveau = "open"
+            uit.append({"rit": rit, "reden": "", "kan": True})
         else:
-            reden = " ".join(t.redenen)
-            niveau = HARD
-        uit.append({"rit": rit, "reden": reden, "niveau": niveau, "paren": t.paren[:6]})
+            uit.append({"rit": rit, "reden": kort_reden(" ".join(t.redenen)), "kan": False})
     return uit
 
 
-def planbord_context(db: Session, d: date, per: str, gekozen: int | None = None) -> dict:
+def korte_klant(rit: m.Rit) -> str:
+    return rit.order.klant.naam.replace(" (demo)", "") if rit.order and rit.order.klant else ""
+
+
+def planbord_context(db: Session, d: date, per: str = "chauffeur", gekozen: int | None = None) -> dict:
     ctx = laad_dag(db, d)
-    rijtijden = rijtijd_per_chauffeur(ctx)
     toetsen = toets_dag(ctx)
-    if per == "chauffeur":
-        rijen = [(c.id, c.pseudoniem, None) for c in db.scalars(select(m.Chauffeur).where(
-            m.Chauffeur.actief.is_(True)).order_by(m.Chauffeur.pseudoniem))]
-        sleutel = "chauffeur_id"
-    else:
-        rijen = [(t.id, f"{t.intern_nummer} · {t.kenteken}", t.status) for t in db.scalars(
-            select(m.Trekker).where(m.Trekker.gearchiveerd.is_(False)).order_by(m.Trekker.intern_nummer))]
+    if per == "trekker":
+        rijen = [(t.id, f"{t.intern_nummer} · {t.kenteken}", t.status if t.status != "actief" else "")
+                 for t in db.scalars(select(m.Trekker).where(m.Trekker.gearchiveerd.is_(False))
+                                     .order_by(m.Trekker.intern_nummer))]
         sleutel = "trekker_id"
+    else:
+        rijen = []
+        afwezig = {a.chauffeur_id: a.reden for a in ctx.afwezig if a.chauffeur_id}
+        for c in db.scalars(select(m.Chauffeur).where(m.Chauffeur.actief.is_(True))
+                            .order_by(m.Chauffeur.pseudoniem)):
+            if c.id in afwezig:
+                notitie = f"afwezig ({afwezig[c.id]})"
+            elif not ctx.trekker_van(c):
+                notitie = "geen trekker"
+            else:
+                notitie = ""
+            rijen.append((c.id, c.pseudoniem, notitie))
+        sleutel = "chauffeur_id"
     blokken = {rid: [] for rid, _, _ in rijen}
     for rit in ctx.ritten:
         t = toetsen[rit.id]
         rid = getattr(rit, sleutel)
         if rit.gepland_start and rid in blokken:
             links, breed = _positie(rit.gepland_start, t.eind, d)
-            blokken[rid].append({"rit": rit, "toets": t, "links": links, "breed": breed,
-                                 "overrides": {nr for (r, nr) in ctx.overrides if r == rit.id}})
-    afwezig = {a.chauffeur_id or a.trekker_id: a.reden for a in ctx.afwezig
-               if (per == "chauffeur" and a.chauffeur_id) or (per != "chauffeur" and a.trekker_id)}
+            blokken[rid].append({"rit": rit, "toets": t, "links": links, "breed": breed, "klant": korte_klant(rit),
+                                 "niveau": t.ergste, "concept": False})
+    # Het automatische plan dat nog op akkoord wacht: als 'concept' op het bord (stippellijn)
+    concept = None
+    v = laatste_voorstel(db, d)
+    if v and v.status == "Voorgesteld" and not ctx.instellingen.get("noodstop") == "aan":
+        concept = v
+        for r in v.regels:
+            if not r.ingepland or r.rit_id not in toetsen or toetsen[r.rit_id].toegewezen:
+                continue
+            rid = getattr(r, sleutel)
+            if rid in blokken and r.start and r.eind:
+                links, breed = _positie(r.start, r.eind, d)
+                blokken[rid].append({"rit": r.rit, "toets": None, "links": links, "breed": breed,
+                                     "klant": korte_klant(r.rit), "concept": True,
+                                     "niveau": "waarschuwing" if r.harde_problemen else "ok", "start": r.start,
+                                     "eind": r.eind})
+    in_concept = {b["rit"].id for rij in blokken.values() for b in rij if b["concept"]}
+    redenen = {r.rit_id: r.reden for r in (concept.regels if concept else []) if r.reden}
+    niet_gepland = [k for k in _niet_gepland(ctx, toetsen) if k["rit"].id not in in_concept]
+    for k in niet_gepland:
+        if k["rit"].id in redenen:
+            k.update(reden=kort_reden(redenen[k["rit"].id]), kan=False)
+    niet_gepland.sort(key=lambda k: (k["kan"], k["rit"].order.venster_van))
     toegewezen = [t for t in toetsen.values() if t.toegewezen]
-    blokkerend = {t.rit.id: open_harde_regels(ctx, t) for t in toegewezen}
-    gekozen_toets = toetsen.get(gekozen) if gekozen else None
     return {
-        "datum": d, "per": per, "rijen": rijen, "blokken": blokken, "afwezig": afwezig,
-        "uren": list(range(BEGIN_UUR, EIND_UUR + 1)), "kan_niet": _kan_niet_gepland(ctx, toetsen),
-        "waarschuwingen": dag_waarschuwingen(ctx, toetsen, rijtijden), "rijtijden": rijtijden,
+        "datum": d, "per": per, "rijen": rijen, "blokken": blokken,
+        "uren": list(range(BEGIN_UUR, EIND_UUR + 1)), "niet_gepland": niet_gepland,
+        "concept": concept, "aantal_concept": len(in_concept),
         "aantal_toegewezen": len(toegewezen), "aantal_ritten": len(ctx.ritten),
-        "blokkerend": {k: v for k, v in blokkerend.items() if v},
+        "aantal_verstuurd": sum(1 for t in toegewezen if t.rit.gepubliceerd),
         "gepubliceerd": bool(toegewezen) and all(t.rit.gepubliceerd for t in toegewezen),
-        "gekozen": gekozen_toets, "ctx": ctx, "noodstop": ctx.instellingen.get("noodstop") == "aan",
+        "gekozen": gekozen, "ctx": ctx, "noodstop": ctx.instellingen.get("noodstop") == "aan",
         "orders_zonder_rit": orders_zonder_rit(db, _orders_van_dag(db, d)),
         "vorige": d - timedelta(days=1), "volgende": d + timedelta(days=1), "vandaag": vandaag_nl(),
     }
@@ -159,22 +148,48 @@ def _rit_context(db: Session, rit: m.Rit, d: date) -> dict:
     chassis = db.scalars(select(m.Chassis).where(m.Chassis.gearchiveerd.is_(False)).order_by(m.Chassis.nummer)).all()
     chauffeurs = db.scalars(select(m.Chauffeur).where(m.Chauffeur.actief.is_(True))
                             .order_by(m.Chauffeur.pseudoniem)).all()
+    afwezig = {a.chauffeur_id for a in ctx.afwezig if a.chauffeur_id}
+    keuzes = []
+    for c in chauffeurs:
+        tid = ctx.trekker_van(c)
+        tr = db.get(m.Trekker, tid) if tid else None
+        if c.id in afwezig:
+            extra = "afwezig"
+        elif not tr:
+            extra = "geen trekker"
+        else:
+            extra = tr.intern_nummer
+        keuzes.append({"id": c.id, "naam": c.pseudoniem, "extra": extra, "kan": bool(tr) and c.id not in afwezig})
+    problemen = []
+    if t and t.toegewezen:
+        for u in t.uitslagen:
+            if u.niveau in (HARD, WAARSCHUWING):
+                problemen.append({"niveau": u.niveau, "tekst": regel_zin(u.nr, u.uitleg)})
+    elif t:
+        r = toegestane_paren(ctx, rit, eenheden(ctx), beschikbare_chauffeurs(ctx))
+        if not r.paren:
+            problemen.append({"niveau": HARD, "tekst": kort_reden(" ".join(r.redenen))})
+    plan = None
+    v = laatste_voorstel(db, d)
+    if v and v.status == "Voorgesteld" and not (t and t.toegewezen):
+        plan = next((r for r in v.regels if r.rit_id == rit.id and r.ingepland), None)
     terminals = [loc for loc in (rit.van_locatie, rit.naar_locatie) if loc.type == "terminal"]
     slots = db.scalars(select(m.Slot).where(m.Slot.rit_id == rit.id)).all()
     overrides = db.scalars(select(m.Override).where(m.Override.rit_id == rit.id)
                            .order_by(m.Override.tijd.desc())).all()
     return {"rit": rit, "toets": t, "duur": ctx.rit_duur(rit), "trekkers": trekkers, "chassis": chassis,
-            "chauffeurs": chauffeurs, "volgende_status": volgende("rit", rit.status), "redencodes": REDENCODES,
+            "chauffeurs": chauffeurs, "keuzes": keuzes, "problemen": problemen, "plan": plan, "klant": korte_klant(rit),
+            "volgende_status": volgende("rit", rit.status), "redencodes": REDENCODES,
             "terminals": terminals, "slots": slots, "overrides": overrides, "datum": d,
             "override_nrs": {o.regel_nr for o in overrides if o.actief},
             "noodstop": ctx.instellingen.get("noodstop") == "aan"}
 
 
 @router.get("")
-def planbord(request: Request, datum: str = "", per: str = "trekker", rit: int | None = None,
+def planbord(request: Request, datum: str = "", per: str = "chauffeur", rit: int | None = None,
              db: Session = Depends(get_db), gebruiker=Depends(planner_of_admin)):
     d = _datum(datum)
-    ctx = planbord_context(db, d, "chauffeur" if per == "chauffeur" else "trekker", rit)
+    ctx = planbord_context(db, d, "trekker" if per == "trekker" else "chauffeur", rit)
     ctx["melding"] = request.query_params.get("melding")
     ctx["fout"] = request.query_params.get("fout")
     if rit:
@@ -194,13 +209,15 @@ def rit_paneel(rit_id: int, request: Request, datum: str = "", db: Session = Dep
                                      else rit.order.venster_van.astimezone(NL).date())
     if not request.headers.get("HX-Request"):
         return RedirectResponse(f"/planbord?datum={d}&rit={rit_id}#rit", status_code=303)
-    return templates.TemplateResponse(request, "planbord/_rit.html", _rit_context(db, rit, d))
+    return templates.TemplateResponse(request, "planbord/_rit.html", {"p": _rit_context(db, rit, d)})
 
 
-def _terug(d: date, rit_id: int | None = None, melding: str = "", fout: str = "", per: str = "trekker"):
+def _terug(d: date, rit_id: int | None = None, melding: str = "", fout: str = "", per: str = "chauffeur"):
     from urllib.parse import urlencode
 
-    q = {"datum": d.isoformat(), "per": per}
+    q = {"datum": d.isoformat()}
+    if per == "trekker":
+        q["per"] = per
     if rit_id:
         q["rit"] = rit_id
     if melding:
@@ -235,22 +252,25 @@ async def toewijzen(rit_id: int, request: Request, db: Session = Depends(get_db)
     if not rit:
         raise HTTPException(404, "Rit niet gevonden.")
     d = _datum(str(form.get("datum", "")))
-    per = str(form.get("per", "trekker"))
+    per = str(form.get("per", "chauffeur"))
     if rit.vastheid == "gestart":
         return _terug(d, rit_id, fout="Deze rit is gestart en staat vast.", per=per)
     ctx = laad_dag(db, d)
     start = _tijd(d, str(form.get("start", "")))
     try:
         oude_start = rit.gepland_start
-        plan_rit(ctx, rit, start, _int(form.get("trekker_id")), _int(form.get("chassis_id")),
-                 _int(form.get("chauffeur_id")))
+        if "trekker_id" in form or "chassis_id" in form:  # oude manier: alles zelf kiezen (onder 'meer')
+            plan_rit(ctx, rit, start, _int(form.get("trekker_id")), _int(form.get("chassis_id")),
+                     _int(form.get("chauffeur_id")))
+        else:  # gewoon: kies de chauffeur, zijn eigen trekker en trailer gaan mee
+            plan_op_chauffeur(ctx, rit, start, _int(form.get("chauffeur_id")))
     except (OngeldigeOvergang, ValueError) as e:
         db.rollback()
         return _terug(d, rit_id, fout=str(e), per=per)
-    melding = "Rit opgeslagen. De regels zijn opnieuw getoetst."
+    melding = "Opgeslagen en gecontroleerd."
     slot = db.scalar(select(m.Slot).where(m.Slot.rit_id == rit.id, m.Slot.status.in_(["Toegekend", "Gewijzigd"])))
     if slot and slot.slot_van and ctx.nu > slot.slot_van and oude_start != start:
-        melding += " Let op: het slot is al begonnen. Deze wijziging telt als no-show."
+        melding += " Let op: het tijdslot bij de terminal is al begonnen. Dit telt als no-show."
         log_actie(db, "no-show-waarschuwing", tabel="rit", record_id=rit.id,
                   na={"tekst": "Rit gewijzigd na begin van het slot"})
     db.commit()
@@ -266,32 +286,26 @@ async def verplaats(rit_id: int, request: Request, db: Session = Depends(get_db)
     if not rit:
         raise HTTPException(404, "Rit niet gevonden.")
     d = _datum(str(form.get("datum", "")))
-    per = str(form.get("per", "trekker"))
+    per = str(form.get("per", "chauffeur"))
     rij = _int(form.get("rij_id"))
     minuten = _int(form.get("minuten")) or 0
     start = datetime.combine(d, time(BEGIN_UUR)).replace(tzinfo=NL) + timedelta(minutes=round(minuten / 15) * 15)
-    trekker_id, chassis_id, chauffeur_id = rit.trekker_id, rit.chassis_id, rit.chauffeur_id
-    if per == "chauffeur":
-        chauffeur_id = rij
-        c = db.get(m.Chauffeur, rij)
-        if c and not trekker_id and c.voorkeur_trekker_id:
-            trekker_id = c.voorkeur_trekker_id
-    else:
-        trekker_id = rij
-    t = db.get(m.Trekker, trekker_id) if trekker_id else None
-    if t and t.vaste_chassis_id and (per != "chauffeur" or not chassis_id):
-        chassis_id = t.vaste_chassis_id
-    if t and not chauffeur_id:
-        c = db.scalar(select(m.Chauffeur).where(m.Chauffeur.voorkeur_trekker_id == t.id))
-        chauffeur_id = c.id if c else None
+    if rit.vastheid == "gestart":
+        return _terug(d, rit_id, fout="Deze rit is gestart en staat vast.", per=per)
     ctx = laad_dag(db, d)
     try:
-        plan_rit(ctx, rit, start, trekker_id, chassis_id, chauffeur_id)
+        if per == "trekker":
+            t = db.get(m.Trekker, rij) if rij else None
+            chassis_id = t.vaste_chassis_id if t and t.vaste_chassis_id else rit.chassis_id
+            c = db.scalar(select(m.Chauffeur).where(m.Chauffeur.voorkeur_trekker_id == rij)) if rij else None
+            plan_rit(ctx, rit, start, rij, chassis_id, rit.chauffeur_id or (c.id if c else None))
+        else:
+            plan_op_chauffeur(ctx, rit, start, rij)
     except (OngeldigeOvergang, ValueError) as e:
         db.rollback()
         return _terug(d, rit_id, fout=str(e), per=per)
     db.commit()
-    return _terug(d, rit_id, melding="Rit verplaatst. De regels zijn opnieuw getoetst.", per=per)
+    return _terug(d, rit_id, melding="Verplaatst en gecontroleerd.", per=per)
 
 
 @router.post("/rit/{rit_id}/status")

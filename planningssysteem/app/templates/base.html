@@ -3,44 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titel %}Planningssysteem{% endblock %} · Demo Transport BV</title>
+  <title>{% block titel %}Planning{% endblock %} · {{ bedrijf }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
   <script src="/static/js/htmx.min.js" defer></script>
   <script src="/static/js/app.js" defer></script>
 </head>
 <body hx-headers='{"X-CSRF-Token": "{{ csrf_token(request) }}"}'>
-  <a class="naar-inhoud" href="#inhoud">Naar de inhoud</a>
+<a class="naar-inhoud" href="#inhoud">Naar de inhoud</a>
+{% set rol = request.session.get('rol') %}
+{% set pad = request.url.path %}
+{% macro item(link, icoon, tekst, actief) %}<a href="{{ link }}" {% if actief %}class="actief" aria-current="page"{% endif %}><span class="icoon" aria-hidden="true">{{ icoon }}</span>{{ tekst }}</a>{% endmacro %}
+<div class="{{ 'app' if request.session.get('gebruiker_id') else 'zonder-menu' }}">
   {% if request.session.get('gebruiker_id') %}
-  <header class="kop">
-    <div class="kop-naam">Planningssysteem <span class="label-test">TESTVERSIE</span></div>
-    <nav aria-label="Hoofdmenu">
-      {% if request.session.get('rol') in ['planner', 'admin'] %}
-      <a href="/">Start</a>
-      {% block extra_nav %}{% endblock %}
-      {% for link, tekst in nav_links|default([]) %}<a href="{{ link }}">{{ tekst }}</a>{% endfor %}
-      <a href="/planbord">Planbord</a>
-      <a href="/voorstellen">Voorstellen</a>
-      <a href="/orders/inlezen">Order inlezen</a>
-      <a href="/facturen">Factuur</a>
-      <a href="/voertuigen">Voertuigen</a>
-      <a href="/stamdata">Stamdata en regels</a>
-      <a href="/logboek">Logboek</a>
-      <a href="/instellingen">Instellingen</a>
+  <header class="zijbalk">
+    <a class="merk" href="/"><span class="merk-logo" aria-hidden="true">DG</span><span>{{ bedrijf }}<small>Planning <span class="label-test">TEST</span></small></span></a>
+    <nav class="menu" aria-label="Hoofdmenu">
+      {% if rol in ['planner', 'admin'] %}
+      {{ item('/', '☀', 'Morgen', pad == '/') }}
+      {{ item('/planbord', '▦', 'Planbord', pad.startswith('/planbord')) }}
+      {{ item('/orders', '📦', 'Orders', pad.startswith('/orders')) }}
+      {{ item('/wagenpark', '🚚', 'Wagenpark', pad.startswith('/wagenpark') or pad.startswith('/voertuigen')) }}
+      {{ item('/beheer', '⚙', 'Beheer', pad.startswith('/beheer') or pad.startswith('/stamdata') or pad.startswith('/logboek') or pad.startswith('/instellingen') or pad.startswith('/voorstellen') or pad.startswith('/facturen') or pad.startswith('/export')) }}
+      {% else %}
+      {{ item('/chauffeur', '🚚', 'Mijn ritten', True) }}
       {% endif %}
     </nav>
-    <form method="post" action="/logout" class="uitloggen">
+    <form method="post" action="/logout" class="zijbalk-voet">
       <input type="hidden" name="csrf" value="{{ csrf_token(request) }}">
-      <span>Ingelogd: <strong>{{ request.session.get('gebruikersnaam') }}</strong> ({{ request.session.get('rol') }})</span>
+      <div>{{ request.session.get('gebruikersnaam') }} · {{ rol }}</div>
       <button type="submit" class="knop knop-klein">Uitloggen</button>
     </form>
   </header>
   {% endif %}
   <main id="inhoud">
     {% block inhoud %}{% endblock %}
+    <footer class="voet" role="note">Testversie met verzonnen data. Jij blijft eindverantwoordelijk. De tachograaf is de wettelijke waarheid.</footer>
   </main>
-  <footer class="voet" role="note">
-    <strong>Let op:</strong> dit is een testversie met verzonnen data. De planner is altijd eindverantwoordelijk.
-    De tachograaf is de wettelijke waarheid. Controleer regels, tarieven en gewichten altijd bij de bron.
-  </footer>
+</div>
 </body>
 </html>

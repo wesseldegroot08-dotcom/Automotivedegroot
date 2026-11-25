@@ -2,12 +2,13 @@
 {% from "_status.html" import aanname %}
 {% block titel %}Voertuigen{% endblock %}
 {% block inhoud %}
-<h1>Voertuigen</h1>
-<p>Voeg trekkers en chassis toe. Het systeem rekent zelf uit wat een combinatie kan, en wat er nog ontbreekt.</p>
+<h1>Wagenpark</h1>
+{% set tab = 'voertuigen' %}{% include "wagenpark/_tabs.html" %}
+<p>Voeg trekkers en trailers toe. Het systeem rekent zelf uit wat een combinatie kan, en wat er nog ontbreekt.</p>
 {% if melding %}<p class="melding melding-ok">✔ {{ melding }}</p>{% endif %}
 <div class="balk">
   <a class="knop" href="/voertuigen/trekker/nieuw">+ Nieuwe trekker</a>
-  <a class="knop" href="/voertuigen/chassis/nieuw">+ Nieuw chassis</a>
+  <a class="knop" href="/voertuigen/chassis/nieuw">+ Nieuwe trailer</a>
   <a class="knop knop-tweede" href="/voertuigen/combinatie">Combinatie doorrekenen</a>
   <a class="knop knop-tweede" href="/voertuigen/import">CSV importeren</a>
 </div>
@@ -33,8 +34,8 @@
 <td><a href="/voertuigen/trekker/{{ t.id }}">Openen</a></td></tr>{% endfor %}</tbody>
 </table></div>
 
-<h2>Chassis</h2>
-<p><a href="/voertuigen/export/chassis.csv">Download chassis als CSV</a></p>
+<h2>Trailer</h2>
+<p><a href="/voertuigen/export/chassis.csv">Download trailer als CSV</a></p>
 <div class="tabel-wrap"><table>
 <thead><tr><th>Nummer</th><th>Type</th><th>Assen</th><th>Tarra</th><th>Geschikt voor</th><th>Status</th><th>Ontbreekt nog</th><th></th></tr></thead>
 <tbody>{% for c, ontbreekt in chassis %}<tr>

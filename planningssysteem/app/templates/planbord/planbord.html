@@ -1,87 +1,76 @@
 {% extends "base.html" %}
-{% from "_status.html" import uitslag %}
-{% block titel %}Planbord {{ datum.strftime('%d-%m-%Y') }}{% endblock %}
+{% block titel %}Planbord {{ datum|dag_nl }}{% endblock %}
 {% block inhoud %}
-<div class="balk planbord-kop">
-  <h1>Planbord {{ datum.strftime('%A %d-%m-%Y')|replace('Monday','maandag')|replace('Tuesday','dinsdag')|replace('Wednesday','woensdag')|replace('Thursday','donderdag')|replace('Friday','vrijdag')|replace('Saturday','zaterdag')|replace('Sunday','zondag') }}</h1>
-  <nav aria-label="Dag kiezen" class="dagkeuze">
-    <a class="knop knop-tweede knop-klein" href="?datum={{ vorige }}&per={{ per }}">← Vorige dag</a>
-    <form method="get" class="inline"><label class="verborgen" for="datum">Datum</label><input type="date" id="datum" name="datum" value="{{ datum }}"><input type="hidden" name="per" value="{{ per }}"><button class="knop knop-klein">Toon</button></form>
-    <a class="knop knop-tweede knop-klein" href="?datum={{ volgende }}&per={{ per }}">Volgende dag →</a>
+<div class="planbord-kop">
+  <h1>Planbord · {{ datum|dag_nl }}</h1>
+  <nav aria-label="Dag kiezen" class="dagwissel">
+    <a href="?datum={{ vorige }}{% if per == 'trekker' %}&per=trekker{% endif %}" aria-label="Vorige dag">←</a>
+    <form method="get" class="inline"><label class="verborgen" for="datum">Datum</label><input type="date" id="datum" name="datum" value="{{ datum }}" onchange="this.form.submit()"></form>
+    <a href="?datum={{ volgende }}{% if per == 'trekker' %}&per=trekker{% endif %}" aria-label="Volgende dag">→</a>
   </nav>
-  <div>Weergave: <a href="?datum={{ datum }}&per=trekker" {% if per == 'trekker' %}aria-current="page" class="actief"{% endif %}>per trekker</a> ·
-    <a href="?datum={{ datum }}&per=chauffeur" {% if per == 'chauffeur' %}aria-current="page" class="actief"{% endif %}>per chauffeur</a></div>
 </div>
-{% if noodstop %}<p class="melding melding-hard" role="alert">⛔ <strong>Noodstop staat aan.</strong> Voorstellen en automatische berichten zijn uit. Je kunt wel handmatig plannen.</p>{% endif %}
+{% if noodstop %}<p class="melding melding-hard" role="alert">⛔ <strong>Noodstop staat aan.</strong> Automatisch plannen en berichten zijn uit. Je kunt wel met de hand plannen.</p>{% endif %}
 {% if melding %}<p class="melding melding-ok" role="status">✔ {{ melding }}</p>{% endif %}
 {% if fout %}<p class="melding melding-hard" role="alert">⛔ {{ fout }}</p>{% endif %}
 
-<div class="balk">
-  <p><strong>{{ aantal_toegewezen }}</strong> van {{ aantal_ritten }} ritten ingepland.
-    {% if gepubliceerd %}<span class="badge badge-ok">✔ Gepubliceerd</span>{% elif blokkerend %}<span class="badge badge-hard">⛔ {{ blokkerend|length }} rit(ten) met een harde regel</span>{% endif %}</p>
-  {% if not noodstop %}<form method="post" action="/voorstellen/maken"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
-    <button class="knop knop-tweede">Maak voorstel voor deze dag</button></form>{% endif %}
-  <a class="knop knop-tweede" href="/voorstellen?datum={{ datum }}">Voorstellen</a>
-  {% if not noodstop %}<form method="post" action="/planbord/prenotificaties"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
-    <button class="knop knop-tweede">Stuur pre-notificaties (simulator)</button></form>{% endif %}
-  <form method="post" action="/planbord/publiceren"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
-    <button class="knop">Publiceer planning</button></form>
-  <a class="knop knop-tweede" href="/export/rooster?datum={{ datum }}">Rooster (print / CSV)</a>
+{% if concept and aantal_concept %}
+<div class="kaart akkoord concept-balk">
+  <p><strong>Dit is het automatische plan ({{ aantal_concept + aantal_toegewezen }} van {{ aantal_ritten }} ritten).</strong><br>Ritten met een stippellijn gelden pas na jouw akkoord.</p>
+  <form method="post" action="/morgen/akkoord"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+    <button class="knop">✔ Akkoord, stuur naar chauffeurs</button></form>
 </div>
+{% else %}
+<p class="zacht"><strong>{{ aantal_toegewezen }} van {{ aantal_ritten }}</strong> ritten gepland{% if aantal_verstuurd %} · {{ aantal_verstuurd }} verstuurd{% endif %}.
+  Tik op een rit om hem te bekijken of te wijzigen. Slepen kan ook.</p>
+{% endif %}
 
-<section aria-labelledby="h-tijdlijn">
-<h2 id="h-tijdlijn" class="verborgen">Tijdlijn</h2>
-<p class="hulp">Sleep een rit naar een andere rij of tijd. Zonder muis: klik op een rit en gebruik het formulier. Kleur én tekst tonen de status: ✔ OK, ⚠ waarschuwing, ⛔ harde regel.</p>
+<section aria-label="Planning per chauffeur">
 <div class="tijdlijn" data-datum="{{ datum }}" data-per="{{ per }}" data-begin="{{ uren[0] }}" data-eind="{{ uren[-1] }}">
   <div class="tl-rij tl-kop"><div class="tl-label">{{ 'Trekker' if per == 'trekker' else 'Chauffeur' }}</div>
-    <div class="tl-baan">{% for u in uren[:-1] %}<span class="tl-uur" style="left: {{ (loop.index0 / (uren|length - 1) * 100)|round(2) }}%">{{ '%02d'|format(u) }}:00</span>{% endfor %}</div></div>
-  {% for rid, naam, status in rijen %}
-  <div class="tl-rij">
-    <div class="tl-label">{{ naam }}{% if status and status != 'actief' %}<br><span class="badge badge-schatting">{{ status }}</span>{% endif %}{% if afwezig.get(rid) %}<br><span class="badge badge-schatting">Afwezig: {{ afwezig[rid] }}</span>{% endif %}
-      {% if per == 'chauffeur' and rijtijden.get(rid) %}<br><span class="hulp">rijtijd {{ rijtijden[rid][0].rijtijd_min|minuten }}</span>{% endif %}</div>
+    <div class="tl-baan">{% for u in uren[:-1] %}{% if u % 2 == 0 %}<span class="tl-uur" style="left: {{ (loop.index0 / (uren|length - 1) * 100)|round(2) }}%">{{ '%02d'|format(u) }}:00</span>{% endif %}{% endfor %}</div></div>
+  {% for rid, naam, notitie in rijen %}
+  <div class="tl-rij{% if notitie %} tl-rustig{% endif %}">
+    <div class="tl-label"><span>{{ naam }}{% if notitie %}<span class="zacht">{{ notitie }}</span>{% endif %}</span></div>
     <div class="tl-baan" data-rij-id="{{ rid }}">
-      {% for b in blokken[rid] %}{% set e = b.toets.ergste %}
-      <a class="tl-blok niveau-{{ e }}{% if b.rit.vastheid != 'open' %} vast{% endif %}" draggable="{{ 'false' if b.rit.vastheid == 'gestart' else 'true' }}" data-rit-id="{{ b.rit.id }}"
-         href="/planbord?datum={{ datum }}&per={{ per }}&rit={{ b.rit.id }}#rit" style="left: {{ b.links }}%; width: {{ b.breed }}%"
-         title="{{ b.rit.order.klantreferentie }} {{ b.rit.gepland_start|uur_nl }}-{{ b.toets.eind|uur_nl }}">
-        <span class="tl-icoon" aria-hidden="true">{% if e == 'hard' %}⛔{% elif e == 'waarschuwing' %}⚠{% else %}✔{% endif %}</span>
-        <strong>{{ b.rit.order.klantreferentie }}</strong> {{ b.rit.gepland_start|uur_nl }}-{{ b.toets.eind|uur_nl }}
-        <span class="tl-sub">{{ b.rit.van_locatie.naam }} → {{ b.rit.naar_locatie.naam }} · {{ b.rit.status }}{% if b.rit.vastheid != 'open' %} · {{ b.rit.vastheid }}{% endif %}{% if b.overrides %} · override{% endif %}</span>
-        <span class="verborgen">Uitslag: {{ e }}</span>
+      {% for b in blokken[rid] %}{% set e = b.niveau %}
+      <a class="tl-blok niveau-{{ e }}{% if b.concept %} concept{% endif %}{% if gekozen == b.rit.id %} geselecteerd{% endif %}" draggable="{{ 'false' if b.rit.vastheid == 'gestart' or b.concept else 'true' }}" data-rit-id="{{ b.rit.id }}"
+         href="/planbord?datum={{ datum }}{% if per == 'trekker' %}&per=trekker{% endif %}&rit={{ b.rit.id }}#rit" style="left: {{ b.links }}%; width: {{ b.breed }}%"
+         title="{{ b.klant }}, {{ (b.start if b.concept else b.rit.gepland_start)|uur_nl }} tot {{ (b.eind if b.concept else b.toets.eind)|uur_nl }}{% if b.concept %} (plan, nog geen akkoord){% endif %}">
+        {% if e == 'hard' %}<span aria-hidden="true">⛔ </span>{% elif e == 'waarschuwing' %}<span aria-hidden="true">⚠ </span>{% endif %}<strong>{{ (b.start if b.concept else b.rit.gepland_start)|uur_nl }}</strong> {{ b.klant }}{% if b.rit.gepubliceerd %} <span class="tl-verstuurd" title="Verstuurd naar de chauffeur">✓</span>{% endif %}
+        <span class="verborgen">{% if b.concept %}Plan, nog geen akkoord. {% endif %}{% if e == 'hard' %}Mag niet{% elif e == 'waarschuwing' %}Let op{% else %}In orde{% endif %}</span>
       </a>
       {% endfor %}
     </div>
   </div>
   {% endfor %}
 </div>
+<p class="legenda"><span>⛔ mag niet</span><span>⚠ let op</span><span>✓ verstuurd</span><span>┆ stippellijn = plan, nog geen akkoord</span></p>
 </section>
 
 {% if paneel %}<section id="rit" class="kaart rit-paneel" aria-labelledby="h-rit">{% with p=paneel %}{% include "planbord/_rit.html" %}{% endwith %}</section>{% endif %}
 
-<div class="twee-kolommen">
-<section class="kaart" aria-labelledby="h-kan-niet">
-  <h2 id="h-kan-niet">Nog niet ingepland / kan niet gepland worden</h2>
+{% if niet_gepland or orders_zonder_rit %}
+<section class="kaart" aria-labelledby="h-open">
+  <h2 id="h-open" style="margin-top:0">Nog niet gepland ({{ niet_gepland|length }})</h2>
+  <p class="hulp">Sleep een rit naar een chauffeur, of tik erop.</p>
   {% if orders_zonder_rit %}<form method="post" action="/planbord/ritten-aanmaken" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
-    <p>{{ orders_zonder_rit|length }} order(s) hebben nog geen rit. <button class="knop knop-klein">Ritten aanmaken</button></p></form>{% endif %}
-  {% if kan_niet %}
-  <ul class="kaartjes">
-  {% for k in kan_niet %}
+    <p>{{ orders_zonder_rit|length }} nieuwe order(s) staan nog niet op het bord. <button class="knop knop-klein">Zet op het bord</button></p></form>{% endif %}
+  <ul class="wachtrij">
+  {% for k in niet_gepland %}
     <li class="sleepbaar" draggable="true" data-rit-id="{{ k.rit.id }}">
-      <a href="/planbord?datum={{ datum }}&per={{ per }}&rit={{ k.rit.id }}#rit"><strong>{{ k.rit.order.klantreferentie }}</strong></a>
-      ({{ k.rit.order.type }}, {{ k.rit.van_locatie.naam }} → {{ k.rit.naar_locatie.naam }}, klant {{ k.rit.order.venster_van|uur_nl }}-{{ k.rit.order.venster_tot|uur_nl }})<br>
-      {% if k.niveau == 'hard' %}<span class="badge badge-hard">⛔ Kan niet gepland worden</span>{% else %}<span class="badge">Open</span>{% endif %} {{ k.reden }}
+      <a href="/planbord?datum={{ datum }}&rit={{ k.rit.id }}#rit"><strong>{{ k.rit.order.venster_van|uur_nl }}</strong> {{ k.rit.order.klant.naam|replace(' (demo)', '') }}</a>
+      {% if not k.kan %}<span class="zacht">⛔ {{ k.reden }}</span>{% endif %}
     </li>
   {% endfor %}
   </ul>
-  {% else %}<p>Alle ritten zijn ingepland.</p>{% endif %}
 </section>
-<section class="kaart" aria-labelledby="h-waarsch">
-  <h2 id="h-waarsch">Waarschuwingen voor deze dag</h2>
-  {% if waarschuwingen %}<ul>{% for w in waarschuwingen %}<li><span class="badge badge-schatting">⚠ {{ w.soort }}</span> {{ w.tekst }}{% if w.rit_id %} <a href="/planbord?datum={{ datum }}&per={{ per }}&rit={{ w.rit_id }}#rit">Bekijk</a>{% endif %}</li>{% endfor %}</ul>
-  {% else %}<p>Geen waarschuwingen.</p>{% endif %}
-  <p><a href="/planbord/terminals">Gemeten wachttijden per terminal</a></p>
-</section>
-</div>
+{% endif %}
+
+{% if noodstop and aantal_toegewezen and not gepubliceerd %}
+<form method="post" action="/planbord/publiceren" class="kaart"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+  <p>Noodstop: verstuur het rooster met de hand.</p><button class="knop">Verstuur naar chauffeurs</button></form>
+{% endif %}
+
 <form id="sleep-formulier" method="post" action="" hidden>
   <input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
   <input type="hidden" name="per" value="{{ per }}"><input type="hidden" name="rij_id"><input type="hidden" name="minuten">

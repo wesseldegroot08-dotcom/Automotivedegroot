@@ -2,8 +2,9 @@
 {% from "_status.html" import regelstatus %}
 {% block titel %}{{ e.titel }}{% endblock %}
 {% block inhoud %}
-<p><a href="/stamdata">← Stamdata en regels</a></p>
-<h1>{{ e.titel }}</h1>
+{% if e.slug == 'chauffeurs' %}<h1>Wagenpark</h1>{% set tab = 'chauffeurs' %}{% include "wagenpark/_tabs.html" %}
+{% else %}<p><a href="/beheer">← Beheer</a> · <a href="/stamdata">Stamdata en regels</a></p>
+<h1>{{ e.titel }}</h1>{% endif %}
 {% if e.uitleg %}<p>{{ e.uitleg }}</p>{% endif %}
 {% if request.query_params.get('opgeslagen') %}<p class="melding melding-ok" role="status">✔ Opgeslagen. De wijziging staat in het logboek.</p>{% endif %}
 <div class="balk">

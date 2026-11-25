@@ -71,7 +71,7 @@ TREKKER_VELDEN = [
     Veld("kosten_per_km_cent", "Kosten per km (cent)", "getal", min=0),
     Veld("kosten_per_uur_cent", "Kosten per uur (cent)", "getal", min=0),
     Veld("verbruik_l_per_100km", "Brandstofverbruik (liter per 100 km)", "getal", min=0),
-    Veld("vaste_chassis_id", "Vaste chassis-koppeling (optioneel)", "fk", fk_model=m.Chassis, fk_label=_naam),
+    Veld("vaste_chassis_id", "Gekoppelde trailer (optioneel)", "fk", fk_model=m.Chassis, fk_label=_naam),
 ]
 
 CHASSIS_VELDEN = [
@@ -124,7 +124,7 @@ SJABLONEN = {
                                                        "tarra_bron": "fabrikant", "twistlock_40": True,
                                                        "geschikt_voor": "dry,HC", "genset": "niet",
                                                        "eigen_of_pool": "eigen", "status": "actief"}),
-        "multi": ("Multi-chassis 20-45ft (5.300 kg, fabrikant)", {"type": "multi", "assen": 3, "tarra_kg": 5300,
+        "multi": ("Multi-trailer 20-45ft (5.300 kg, fabrikant)", {"type": "multi", "assen": 3, "tarra_kg": 5300,
                                                                   "tarra_bron": "fabrikant", "twistlock_20": True,
                                                                   "twistlock_40": True, "twistlock_45": True,
                                                                   "geschikt_voor": "dry,HC", "genset": "niet",

@@ -108,4 +108,12 @@ def toegestane_paren(ctx: DagContext, rit: m.Rit, eenh: list[Eenheid] | None = N
             uit.paren.append((e, c))
     if not uit.paren:
         uit.redenen.append("Geen geschikte chauffeur beschikbaar. " + " | ".join(sorted(set(chauffeur_redenen))))
+        return uit
+    # Elke chauffeur rijdt zijn eigen trekker (met de trailer die eraan gekoppeld is)
+    eigen = [(e, c) for e, c in uit.paren if ctx.trekker_van(c) == e.trekker.id]
+    if not eigen:
+        namen = sorted({c.pseudoniem for _e, c in uit.paren})
+        uit.redenen.append("Wel geschikte chauffeurs (" + ", ".join(namen) + "), maar hun eigen trekker of trailer "
+                           "past niet bij deze rit. Geef een chauffeur voor deze dag een andere trekker.")
+    uit.paren = eigen
     return uit

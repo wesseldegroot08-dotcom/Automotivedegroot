@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titel %}Beheer{% endblock %}
+{% block inhoud %}
+<h1>Beheer</h1>
+{% if noodstop %}<p class="melding melding-hard">⛔ De noodstop staat aan. Automatisch plannen en berichten staan uit.</p>{% endif %}
+<div class="tegels">
+{% for link, icoon, titel, uitleg in tegels %}
+  <a class="tegel" href="{{ link }}"><h2><span aria-hidden="true">{{ icoon }}</span> {{ titel }}</h2><p>{{ uitleg }}</p></a>
+{% endfor %}
+</div>
+{% endblock %}

@@ -9,7 +9,19 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import BASIS_MAP, instellingen
-from app.web import algemeen, chauffeur, export, orders, planbord, stamdata, voertuigen, voorstellen
+from app.web import (
+    algemeen,
+    beheer,
+    chauffeur,
+    export,
+    morgen,
+    orders,
+    planbord,
+    stamdata,
+    voertuigen,
+    voorstellen,
+    wagenpark,
+)
 from app.web.deps import NietIngelogd, csrf_token
 from app.web.sjablonen import templates
 
@@ -26,8 +38,12 @@ def maak_app() -> FastAPI:
                        same_site="lax", https_only=cfg.cookie_secure, max_age=12 * 3600)
     app.mount("/static", StaticFiles(directory=str(BASIS_MAP / "app" / "static")), name="static")
     templates.env.globals["csrf_token"] = csrf_token
+    templates.env.globals["bedrijf"] = cfg.bedrijfsnaam
 
     app.include_router(algemeen.router)
+    app.include_router(morgen.router)
+    app.include_router(beheer.router)
+    app.include_router(wagenpark.router)
     app.include_router(stamdata.router)
     app.include_router(voertuigen.router)
     app.include_router(planbord.router)

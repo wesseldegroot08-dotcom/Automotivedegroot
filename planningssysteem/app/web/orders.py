@@ -25,6 +25,22 @@ Leveren bij Alfa DC Waalwijk op 27-11-2026 tussen 09:00 - 13:00.
 Groet, Alfa Logistiek (demo)"""
 
 
+@router.get("")
+def lijst(request: Request, datum: str = "", db: Session = Depends(get_db), gebruiker=Depends(planner_of_admin)):
+    from datetime import date
+
+    from app.planner.context import laad_dag
+    from app.ports.clock import morgen_nl
+
+    try:
+        d = date.fromisoformat(datum) if datum else morgen_nl()
+    except ValueError:
+        d = morgen_nl()
+    ctx = laad_dag(db, d)
+    ritten = sorted(ctx.ritten, key=lambda r: r.order.venster_van)
+    return templates.TemplateResponse(request, "orders/lijst.html", {"ritten": ritten, "datum": d})
+
+
 @router.get("/inlezen")
 def inlezen(request: Request, db: Session = Depends(get_db), gebruiker=Depends(planner_of_admin)):
     concepten = db.scalars(select(m.OrderConcept).order_by(m.OrderConcept.id.desc()).limit(20)).all()

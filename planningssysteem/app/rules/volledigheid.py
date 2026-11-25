@@ -33,7 +33,7 @@ def ontbreekt_trekker(t, vandaag: date) -> list[tuple[str, bool]]:
 def ontbreekt_chassis(c, vandaag: date) -> list[tuple[str, bool]]:
     uit: list[tuple[str, bool]] = []
     _check(uit, c.tarra_kg is None, "Tarra (leeggewicht) is onbekend. Gewicht kan niet berekend worden.")
-    _check(uit, c.tarra_kg is not None and c.tarra_bron == "aanname", "Tarra is een aanname. Weeg het chassis.")
+    _check(uit, c.tarra_kg is not None and c.tarra_bron == "aanname", "Tarra is een aanname. Weeg de trailer.")
     _check(uit, c.max_kingpin_kg is None, "Max last op de koppelpen (kingpin) is onbekend.", False)
     _check(uit, c.max_asgroep_kg is None, "Max last op de as-groep is onbekend.", False)
     _check(uit, c.kingpinhoogte_mm is None, "Kingpinhoogte onbekend (nodig voor de hoogtecontrole).", False)

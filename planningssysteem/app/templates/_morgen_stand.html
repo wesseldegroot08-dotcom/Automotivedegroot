@@ -1,0 +1,48 @@
+{% set s = s %}
+<div id="stand" {% if s.fase == 'rekenen' %}hx-get="/morgen/stand?datum={{ datum }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+<section class="kaart">
+  <div class="stand">
+    <div class="stand-getal">{{ s.gepland }}<small> van {{ s.totaal }}</small></div>
+    <div>
+      <strong>ritten {{ 'in het plan' if s.fase == 'klaar_voor_akkoord' else 'gepland' }}</strong>
+      <div class="voortgang" role="progressbar" aria-valuemin="0" aria-valuemax="{{ s.totaal }}" aria-valuenow="{{ s.gepland }}"><span style="width: {{ (100 * s.gepland / s.totaal)|round if s.totaal else 0 }}%"></span></div>
+      <div class="zacht">
+      {% if s.fase == 'rekenen' %}<span class="bezig" aria-hidden="true"></span> Het plan wordt gemaakt. Dit duurt even…
+      {% elif s.fase == 'klaar_voor_akkoord' %}Plan automatisch gemaakt om {{ s.voorstel.aangemaakt|uur_nl }}. Nog niets verstuurd.
+      {% elif s.fase == 'verstuurd' %}✔ Alles is verstuurd naar de chauffeurs ({{ s.verstuurd }} ritten).
+      {% elif s.fase == 'deels' %}{{ s.verstuurd }} ritten verstuurd. De rest wacht op jou.
+      {% elif s.fase == 'handmatig' %}⛔ Noodstop: automatisch plannen staat uit. Plan met de hand op het planbord.
+      {% elif s.fase == 'leeg' %}Geen orders voor deze dag.
+      {% else %}Er is nog geen plan.{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if s.fase == 'klaar_voor_akkoord' %}
+<section class="kaart akkoord">
+  <p><strong>Klopt het plan?</strong><br>Bij akkoord meldt het systeem de ritten aan bij de terminals en stuurt het rooster naar de chauffeurs.</p>
+  <form method="post" action="/morgen/akkoord"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+    <button class="knop knop-groot">✔ Akkoord, stuur naar chauffeurs</button></form>
+</section>
+{% elif s.fase == 'deels' %}
+<section class="kaart akkoord">
+  <p><strong>Nog niet alles is verstuurd.</strong><br>Los de punten hieronder op en druk dan nog een keer.</p>
+  <form method="post" action="/morgen/akkoord"><input type="hidden" name="csrf" value="{{ csrf_token(request) }}"><input type="hidden" name="datum" value="{{ datum }}">
+    <button class="knop knop-groot">Stuur wat klaar is</button></form>
+</section>
+{% endif %}
+
+<section class="kaart">
+  <h2 style="margin-top:0">Moet jij naar kijken {% if s.acties %}({{ s.acties|selectattr('niveau', 'ne', 'info')|list|length }}){% endif %}</h2>
+  {% if s.acties %}
+  <ul class="acties">
+  {% for a in s.acties %}
+    <li><span class="icoon" aria-hidden="true">{{ a.icoon }}</span>
+      <div class="tekst"><div class="titel">{{ a.titel }}</div><div class="wat">{{ a.wat }}</div></div>
+      {% if a.link %}<a class="knop knop-tweede knop-klein" href="{{ a.link }}">Bekijk</a>{% endif %}</li>
+  {% endfor %}
+  </ul>
+  {% elif s.fase != 'rekenen' %}<p>✔ Niets. Alles is in orde.</p>{% endif %}
+</section>
+</div>

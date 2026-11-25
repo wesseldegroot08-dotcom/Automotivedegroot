@@ -38,6 +38,7 @@ class Instellingen:
         self.database_url = url
         self.demo_wachtwoord = os.environ.get("DEMO_WACHTWOORD", "demo1234")
         self.cookie_secure = os.environ.get("COOKIE_SECURE", "0") == "1"
+        self.bedrijfsnaam = os.environ.get("BEDRIJFSNAAM", "Degroot Transport")
 
 
 @lru_cache
